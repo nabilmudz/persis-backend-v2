@@ -61,11 +61,11 @@ export class UsersService {
   }
 
   async login(payload: { email: string; password: string }): Promise<{ user: any; access_token: string }> {
-    console.log("Login Payload:", payload);
+    console.log(payload)
     const user = await this.userModel
-      .findOne({ email: payload.email.toLowerCase() })
-      .select('+password_hash')
-      .exec();
+    .findOne({ email: payload.email.toLowerCase() })
+    .select('+password_hash')
+    .exec();
     
     if (!user) throw new NotFoundException('User tidak ditemukan');
     
@@ -75,7 +75,8 @@ export class UsersService {
     const { password_hash, ...userWithoutPassword } = userObject;
     const jwtPayload = { sub: user._id, email: user.email, role: user.role };
     const access_token = jwt.sign(jwtPayload, this.jwtCfg.secret!, { expiresIn: '1d' });
-    console.log(userWithoutPassword, access_token);
+    
+    console.log(userWithoutPassword, access_token)
     return { user: userWithoutPassword, access_token };
   }
 

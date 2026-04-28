@@ -1,16 +1,20 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
-import { RolesModule } from './modules/roles/roles.module';
-import { UsersModule } from './modules/users/users.module';
+import { AppController } from './app.controller';
+import { DuesPeriodsModule } from './modules/dues-periods/dues-periods.module';
 import { PaymentMethodModule } from './modules/payment-method/payment-method.module';
 import { RegionsModule } from './modules/regions/regions.module';
-import { DuesPeriodsModule } from './modules/dues-periods/dues-periods.module';
-import { TransactionModule } from './modules/transaction/transaction.module';
+import { RolesModule } from './modules/roles/roles.module';
 import { TransactionItemModule } from './modules/transaction-item/transaction-item.module';
+import { TransactionModule } from './modules/transaction/transaction.module';
+import { UsersModule } from './modules/users/users.module';
+import { BankAccountModule } from './modules/bank-account/bank-account.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }),
+  controllers: [AppController],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
     MongooseModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -23,7 +27,8 @@ import { TransactionItemModule } from './modules/transaction-item/transaction-it
     RegionsModule,
     DuesPeriodsModule,
     TransactionItemModule,
-    TransactionModule
+    TransactionModule,
+    BankAccountModule
   ],
 })
 export class AppModule {}
