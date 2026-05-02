@@ -10,7 +10,7 @@ export enum UserRole {
   BENDAHARA_PD = 'bendahara_pd',
 }
 
-@Schema({ timestamps: true })
+@Schema({ collection: 'users', timestamps: true })
 export class User {
   @Prop({ required: true, unique: true, trim: true })
   npa!: string;

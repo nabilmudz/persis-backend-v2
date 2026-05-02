@@ -18,7 +18,7 @@ import { BankAccountModule } from './modules/bank-account/bank-account.module';
     MongooseModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        uri: config.get<string>('MONGODB_URI'),
+        uri: config.get<string>('MONGODB_URI')
       }),
     }),
     RolesModule,

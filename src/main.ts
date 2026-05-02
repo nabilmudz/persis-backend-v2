@@ -1,7 +1,13 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { setDefaultResultOrder } from 'dns';
+import { Resolver } from 'dns/promises';
 
+const resolver = new Resolver();
+resolver.setServers(['8.8.8.8', '1.1.1.1']);
+
+setDefaultResultOrder('ipv4first');
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 

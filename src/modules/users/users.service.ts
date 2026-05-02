@@ -11,10 +11,12 @@ import * as jwt from 'jsonwebtoken';
 import { Inject } from '@nestjs/common';
 import * as config from '@nestjs/config';
 import jwtConfig from '../../config/jwt.config';
-
+import * as crypto from 'node:crypto';
 import { CreateUsersDto } from './dto/create-users.dto';
 import { UpdateUsersDto } from './dto/update-users.dto';
 import { User, UserDocument } from './schemas/users.schema';
+import { EmailService } from '../../helper/mail/email.service';
+import { OtpService } from '../otp/otp.service';
 
 export interface LoginResponse {
   user: {
@@ -32,6 +34,8 @@ export class UsersService {
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
     @Inject(jwtConfig.KEY) private readonly jwtCfg: config.ConfigType<typeof jwtConfig>,
+    private otpService: OtpService,
+    private emailService: EmailService,
   ) {}
 
   async findAll(): Promise<UserDocument[]> {
@@ -121,15 +125,26 @@ export class UsersService {
     return updated;
   }
 
-  async activate(id: string): Promise<UserDocument> {
-    this.validateObjectId(id);
-    console.log("ID",id)
-    const user = await this.userModel
-      .findByIdAndUpdate(id, { is_active: true }, { new: true })
-      .select('-password_hash')
-      .exec();
-    if (!user) throw new NotFoundException('User not found');
-    return user;
+  async activate(payload: any): Promise<any> {
+    const { npa, email } = payload;
+
+    const otp = await this.otpService.generate(npa);
+    await this.emailService.sendOtp(email, otp);
+
+    return { message: 'OTP berhasil dikirim ke email' };
+  }
+
+  async verifyOtp(npa: string, otp: string): Promise<any> {
+    await this.otpService.verify(npa, otp);
+
+    const result = await this.userModel.updateOne(
+      { npa },
+      { is_active: true },
+    );
+
+    if (result.matchedCount === 0) throw new BadRequestException('User tidak ditemukan');
+
+    return { message: 'Akun berhasil diaktivasi' };
   }
 
   async remove(id: string): Promise<{ deleted: true }> {

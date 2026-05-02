@@ -4,6 +4,7 @@ import { CreateUsersDto } from './dto/create-users.dto';
 import { UpdateUsersDto } from './dto/update-users.dto';
 import { UsersService } from './users.service';
 import { LoginUserDto } from './dto/login-users.dto';
+import { VerifyOtpDto } from '../otp/dto/verify-otp.dto';
 
 @Controller('users')
 export class UsersController {
@@ -39,8 +40,13 @@ export class UsersController {
     return this.usersService.remove(id);
   }
 
-  @Patch(':id/activate')
-  async activate(@Param('id') id: string) {
-    return this.usersService.activate(id);
+  @Post('activate')
+  async activate(@Body() payload: any) {
+    return this.usersService.activate(payload);
+  }
+
+  @Post('verify-otp')
+  verifyOtp(@Body() dto: VerifyOtpDto) {
+    return this.usersService.verifyOtp(dto.npa, dto.otp);
   }
 }
