@@ -5,16 +5,50 @@ import { Model } from 'mongoose';
 import { CreateTransactionItemDto } from './dto/create-transaction-item.dto';
 import { UpdateTransactionItemDto } from './dto/update-transaction-item.dto';
 import { TransactionItems, TransactionItemsDocument } from './schemas/transaction-item.schema';
+import { DuesPeriodsDocument, DuesPeriods } from '../dues-periods/schemas/dues-periods.schema';
 
 @Injectable()
 export class TransactionItemService {
   constructor(
     @InjectModel(TransactionItems.name)
     private readonly transactionItemModel: Model<TransactionItemsDocument>,
+    @InjectModel(DuesPeriods.name)
+    private readonly periodModel: Model<DuesPeriodsDocument>
   ) {}
 
   async findAll(): Promise<TransactionItemsDocument[]> {
     return this.transactionItemModel.find().exec();
+  }
+
+  async findByUserWithStatus(userId: string): Promise<any[]> {
+    const [periods, items] = await Promise.all([
+      this.periodModel.find({ is_active: true }).exec(),
+      this.transactionItemModel.find({ anggota_id: userId }).exec(),
+    ]);
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1; // 1-12
+
+    return periods.map(period => {
+      const item = items.find(
+        i => i.period_id.toString() === period._id.toString()
+      );
+
+      if (item) {
+        return { period, item, status: 'paid' }; // hijau
+      }
+
+      const isPast =
+        period.year < currentYear ||
+        (period.year === currentYear && period.month < currentMonth);
+
+      return {
+        period,
+        item: null,
+        status: isPast ? 'tunggakan' : 'pending', // merah atau abu
+      };
+    });
   }
 
   async findOne(id: string): Promise<TransactionItemsDocument> {

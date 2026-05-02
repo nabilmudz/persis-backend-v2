@@ -18,6 +18,11 @@ export class TransactionItemController {
     return this.transactionItemService.findOne(id);
   }
 
+  @Get('user/:id')
+  findByUserWithStatus(@Param('id') id: string) {
+    return this.transactionItemService.findByUserWithStatus(id);
+  }
+
   @Post()
   create(@Body() payload: CreateTransactionItemDto) {
     return this.transactionItemService.create(payload);
