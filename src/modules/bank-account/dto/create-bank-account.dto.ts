@@ -1,9 +1,9 @@
 import { IsBoolean, IsMongoId, IsNotEmpty, IsOptional, IsString, IsUrl } from 'class-validator';
 
 export class CreateBankAccountDto {
-  @IsMongoId()
-  @IsNotEmpty()
-  region_id!: string;
+  // @IsMongoId()
+  @IsOptional()
+  region_id?: string | null;
 
   @IsMongoId()
   @IsNotEmpty()
