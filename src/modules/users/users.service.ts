@@ -36,7 +36,7 @@ export class UsersService {
     @Inject(jwtConfig.KEY) private readonly jwtCfg: config.ConfigType<typeof jwtConfig>,
     private otpService: OtpService,
     private emailService: EmailService,
-  ) {}
+  ) {}  
 
   async findAll(): Promise<UserDocument[]> {
     return this.userModel.find().select('-password_hash').exec();
@@ -64,23 +64,28 @@ export class UsersService {
       .exec();
   }
 
-  async login(payload: { email: string; password: string }): Promise<{ user: any; access_token: string }> {
-    console.log(payload)
+  async login(payload: { email: string; password: string }) {
+    const input = payload.email;
+    const isNpa = !input.includes('@');
+
     const user = await this.userModel
-    .findOne({ email: payload.email.toLowerCase() })
-    .select('+password_hash')
-    .exec();
-    
-    if (!user) throw new NotFoundException('User tidak ditemukan');
-    
+      .findOne(isNpa ? { npa: input } : { email: input })
+      .select('+password_hash')
+      .exec();
+
+    if (!user) {
+      throw new NotFoundException(
+        isNpa ? 'NPA tidak ditemukan' : 'Email tidak ditemukan'
+      );
+    }
+
     const isPasswordValid = await bcrypt.compare(payload.password, user.password_hash);
     if (!isPasswordValid) throw new BadRequestException('Password salah');
-    const userObject = user.toObject();
-    const { password_hash, ...userWithoutPassword } = userObject;
+
+    const { password_hash, ...userWithoutPassword } = user.toObject();
     const jwtPayload = { sub: user._id, email: user.email, role: user.role };
     const access_token = jwt.sign(jwtPayload, this.jwtCfg.secret!, { expiresIn: '1d' });
-    
-    console.log(userWithoutPassword, access_token)
+
     return { user: userWithoutPassword, access_token };
   }
 
@@ -123,6 +128,40 @@ export class UsersService {
 
     if (!updated) throw new NotFoundException('User not found');
     return updated;
+  }
+
+  async checkNpa(npa: string) {
+    const user = await this.userModel.findOne({ npa }).exec();
+    if (!user) {
+      throw new NotFoundException('NPA tidak ditemukan');
+    }
+
+    if (user.is_active || user.password_hash) {
+      throw new BadRequestException('NPA sudah aktif, silakan login');
+    }
+
+    return {
+      message: 'NPA valid',
+      npa: user.npa,
+      fullname: user.fullname,
+    };
+  }
+
+  async setPassword(npa: string, password: string) {
+    const user = await this.userModel.findOne({ npa }).exec();
+
+    if (!user) {
+      throw new NotFoundException('NPA tidak ditemukan');
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
+
+    await this.userModel.updateOne(
+      { npa },
+      { password_hash: hashed, isActive: true },
+    ).exec();
+
+    return { message: 'Password berhasil disimpan' };
   }
 
   async activate(payload: any): Promise<any> {

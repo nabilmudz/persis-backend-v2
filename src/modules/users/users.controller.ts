@@ -40,6 +40,16 @@ export class UsersController {
     return this.usersService.remove(id);
   }
 
+  @Get('check-npa/:npa') 
+  async findByNpa(@Param('npa') npa: string) {
+    return this.usersService.checkNpa(npa);
+  }
+
+  @Post('set-password')
+  async setPassword(@Body() body: { npa: string; password: string }) {
+    return this.usersService.setPassword(body.npa, body.password);
+  }
+
   @Post('activate')
   async activate(@Body() payload: any) {
     return this.usersService.activate(payload);

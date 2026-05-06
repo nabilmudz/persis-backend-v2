@@ -11,15 +11,18 @@ export class TransactionItems {
 
   @Prop({ type: String, ref: 'Transactions', required: true })
   transaction_id!: string;
-
+  
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   anggota_id!: Types.ObjectId;
-
+  
   @Prop({ type: Types.ObjectId, ref: 'DuesPeriods', required: true })
   period_id!: Types.ObjectId;
-
+  
   @Prop({ enum: ['pending', 'paid'], default: 'pending' })
   status!: string;
+
+  @Prop({ type: String, required: false })
+  bukti_url?: string;
 }
 
 export const TransactionItemsSchema = SchemaFactory.createForClass(TransactionItems);
