@@ -45,6 +45,11 @@ export class UsersController {
     return this.usersService.checkNpa(npa);
   }
 
+  @Get('region/:regionId') 
+  async findByRegion(@Param('regionId') npa: string) {
+    return this.usersService.findByRegion(npa);
+  }
+
   @Post('set-password')
   async setPassword(@Body() body: { npa: string; password: string }) {
     return this.usersService.setPassword(body.npa, body.password);

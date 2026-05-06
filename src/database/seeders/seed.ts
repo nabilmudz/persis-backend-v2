@@ -10,9 +10,9 @@ async function bootstrap() {
   const app = await NestFactory.createApplicationContext(SeederModule);
 
   await app.get(RolesSeeder).seed();
-  await app.get(UsersSeeder).seed();
   await app.get(PaymentMethodSeeder).seed();
   await app.get(RegionsSeeder).seed();
+  await app.get(UsersSeeder).seed();
   await app.get(DuesPeriodsSeeder).seed();
 
   await app.close();

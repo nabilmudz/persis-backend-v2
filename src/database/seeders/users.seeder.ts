@@ -1,18 +1,30 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
 import { User, UserDocument, UserRole } from '../../modules/users/schemas/users.schema';
+import { Regions, RegionsDocument } from '../../modules/regions/schemas/regions.schema';
 
 @Injectable()
 export class UsersSeeder {
   constructor(
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+    @InjectModel(Regions.name)
+    private readonly regionsModel: Model<RegionsDocument>,
   ) {}
 
   async seed(): Promise<void> {
     const password_hash = await bcrypt.hash('password123', 10);
+
+    // Grab regions from DB — must run AFTER regions are seeded
+    const pd = await this.regionsModel.findOne({ level: 'PD' });
+    const pc = await this.regionsModel.findOne({ level: 'PC' });
+    const pj = await this.regionsModel.findOne({ level: 'PJ' });
+
+    if (!pd || !pc || !pj) {
+      throw new Error('Regions not found. Run regions seeder first.');
+    }
 
     const users = [
       {
@@ -22,6 +34,7 @@ export class UsersSeeder {
         no_hp: '081234567890',
         password_hash,
         role: UserRole.BENDAHARA_PD,
+        region_id: pd._id,
         is_active: true,
       },
       {
@@ -31,6 +44,7 @@ export class UsersSeeder {
         no_hp: '081234567891',
         password_hash,
         role: UserRole.BENDAHARA_PC,
+        region_id: pc._id,
         is_active: true,
       },
       {
@@ -40,6 +54,7 @@ export class UsersSeeder {
         no_hp: '081234567892',
         password_hash,
         role: UserRole.BENDAHARA_PJ,
+        region_id: pj._id,
         is_active: true,
       },
       {
@@ -49,6 +64,7 @@ export class UsersSeeder {
         no_hp: '081234567893',
         password_hash,
         role: UserRole.ANGGOTA,
+        region_id: pj._id, // anggota belongs to a jamaah (PJ)
         is_active: true,
       },
       {
@@ -58,6 +74,7 @@ export class UsersSeeder {
         no_hp: '081234567894',
         password_hash,
         role: UserRole.ANGGOTA,
+        region_id: pj._id,
         is_active: false,
       },
     ];
