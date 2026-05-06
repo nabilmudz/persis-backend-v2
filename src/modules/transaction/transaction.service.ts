@@ -23,6 +23,7 @@ export class TransactionService {
     if (!doc) throw new NotFoundException('Transaction not found');
     return doc;
   }
+
   async create(payload: CreateTransactionsDto): Promise<any> {
     const session = await this.connection.startSession();
     session.startTransaction();
@@ -30,24 +31,26 @@ export class TransactionService {
     try {
       const { items, ...transactionData } = payload;
 
-      const [newTransaction] = await this.transactionModel.create([transactionData], { session });
+      const created = await this.transactionModel.create(
+        [transactionData as any],
+        { session }
+      );
+      const newTransaction = created[0] as TransactionsDocument;
+
       const itemsWithHeaderId = items.map(item => ({
         ...item,
         transaction_id: newTransaction._id,
       }));
 
-      const createdItems = await this.transactionItemsModel.create(itemsWithHeaderId, { 
-        session, 
-        ordered: true 
-      });
+      const createdItems = await this.transactionItemsModel.create(
+        itemsWithHeaderId as any[],
+        { session, ordered: true }
+      );
 
       await session.commitTransaction();
       const result = newTransaction.toObject();
-      return {
-        ...result,
-        items: createdItems
-      };
-      
+      return { ...result, items: createdItems };
+
     } catch (error) {
       await session.abortTransaction();
       throw error;
