@@ -1,10 +1,7 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const node_fs_1 = __importDefault(require("node:fs"));
-const node_path_1 = __importDefault(require("node:path"));
+const node_fs_1 = require("node:fs");
+const node_path_1 = require("node:path");
 const args = parseArgs(process.argv.slice(2));
 const rawName = (args.name ?? args._[0] ?? '').trim();
 if (!rawName) {
