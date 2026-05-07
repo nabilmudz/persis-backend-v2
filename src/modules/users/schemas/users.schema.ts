@@ -30,7 +30,7 @@ export class User {
   @Prop({ required: true, enum: UserRole, default: UserRole.ANGGOTA })
   role!: UserRole;
 
-  @Prop({ type: Types.ObjectId, ref: 'Region' })
+  @Prop({ type: Types.ObjectId, ref: 'Regions' })
   region_id?: Types.ObjectId;
 
   @Prop({ default: false })

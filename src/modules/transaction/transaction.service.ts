@@ -5,21 +5,130 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Model, Connection } from 'mongoose';
 import { TransactionItems, TransactionItemsDocument } from '../transaction-item/schemas/transaction-item.schema';
+import { DuesPeriods, DuesPeriodsDocument } from '../dues-periods/schemas/dues-periods.schema';
+import { User, UserDocument } from '../users/schemas/users.schema';
 
 @Injectable()
 export class TransactionService {
   constructor(
     @InjectModel(Transactions.name) private transactionModel: Model<TransactionsDocument>,
-    @InjectModel(TransactionItems.name) private transactionItemsModel: Model<TransactionItemsDocument>, 
+    @InjectModel(TransactionItems.name) private transactionItemsModel: Model<TransactionItemsDocument>,
     @InjectConnection() private connection: Connection,
   ) {}
 
-  async findAll(): Promise<TransactionsDocument[]> {
+  async findAll() {
     return this.transactionModel.find().exec();
   }
 
+  async export(month: number, year: number) {
+    const transactions = await this.transactionModel.aggregate([
+      {
+        $lookup: {
+          from: 'transactionitems',
+          localField: '_id',
+          foreignField: 'transaction_id',
+          as: 'items',
+        },
+      },
+      { $unwind: '$items' },
+
+      // convert string period_id to ObjectId before lookup
+      {
+        $addFields: {
+          'items.period_id_obj': {
+            $toObjectId: '$items.period_id',
+          },
+        },
+      },
+
+      {
+        $lookup: {
+          from: 'duesperiods',
+          localField: 'items.period_id_obj',
+          foreignField: '_id',
+          as: 'period',
+        },
+      },
+      { $unwind: '$period' },
+
+      {
+        $match: {
+          'period.month': month,
+          'period.year': year,
+        },
+      },
+
+      // same for anggota_id
+      {
+        $addFields: {
+          'items.anggota_id_obj': {
+            $toObjectId: '$items.anggota_id',
+          },
+        },
+      },
+
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'items.anggota_id_obj',
+          foreignField: '_id',
+          as: 'member',
+        },
+      },
+      { $unwind: '$member' },
+
+      {
+        $project: {
+          transaction_id: '$_id',
+          created_at: 1,
+          total_amount: 1,
+          status: 1,
+          member_name: '$member.fullname',
+          npa: '$member.npa',
+          period_month: '$period.month',
+          period_year: '$period.year',
+          item_status: '$items.status',
+        },
+      },
+    ]);
+
+    const totalAmount = transactions.reduce(
+      (acc, item) => acc + (item.total_amount ?? 0),
+      0,
+    );
+
+    return {
+      meta: {
+        month,
+        year,
+        generated_at: new Date(),
+        total_transactions: transactions.length,
+      },
+      summary: {
+        total_amount: totalAmount,
+        distribution: {
+          pj: { percentage: 30, amount: totalAmount * 0.30 },
+          pc: { percentage: 20, amount: totalAmount * 0.20 },
+          pd: { percentage: 20, amount: totalAmount * 0.20 },
+          pw: { percentage: 15, amount: totalAmount * 0.15 },
+          pp: { percentage: 15, amount: totalAmount * 0.15 },
+        },
+      },
+      data: transactions,
+    };
+  }
+  
   async findOne(id: string): Promise<TransactionsDocument> {
-    const doc = await this.transactionModel.findById(id).exec();
+    const doc = this.transactionModel
+    .findById(id)
+    .populate({
+      path: 'transaction_items',
+      populate: [
+        { path: 'anggota_id' },
+        { path: 'period_id' },
+      ],
+    })
+    .lean();
     if (!doc) throw new NotFoundException('Transaction not found');
     return doc;
   }

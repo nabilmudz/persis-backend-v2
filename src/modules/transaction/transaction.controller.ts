@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 
 import { CreateTransactionsDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
@@ -11,6 +11,14 @@ export class TransactionController {
   @Get()
   findAll() {
     return this.transactionService.findAll();
+  }
+
+  @Get('export')
+  async export(
+    @Query('month', ParseIntPipe) month: number,
+    @Query('year', ParseIntPipe) year: number,
+  ) {
+    return this.transactionService.export(month, year);
   }
 
   @Get(':id')

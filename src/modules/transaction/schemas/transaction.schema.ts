@@ -38,3 +38,10 @@ export class Transactions {
 }
 
 export const TransactionsSchema = SchemaFactory.createForClass(Transactions);
+TransactionsSchema.virtual('transaction_items', {
+  ref: 'TransactionItems',
+  localField: '_id',
+  foreignField: 'transaction_id',
+});
+TransactionsSchema.set('toJSON', { virtuals: true });
+TransactionsSchema.set('toObject', { virtuals: true });
