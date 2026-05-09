@@ -1,6 +1,6 @@
 ARG NODE_ENV=development
 ARG BUILD_VERSION=unknown
-ARG NODE_VERSION=20-slim
+ARG NODE_VERSION=20-alpine
 
 FROM node:${NODE_VERSION} AS builder
 
