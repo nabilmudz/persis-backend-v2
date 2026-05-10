@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-
+import { join } from 'path';
 import { CreateBankAccountDto } from './dto/create-bank-account.dto';
 import { UpdateBankAccountDto } from './dto/update-bank-account.dto';
 import { BankAccounts, BankAccountsDocument } from './schemas/bank-account.schema';
@@ -23,7 +23,14 @@ export class BankAccountService {
     return doc;
   }
 
-  async create(payload: CreateBankAccountDto): Promise<BankAccountsDocument> {
+  async create(
+    payload: CreateBankAccountDto,
+    file?: Express.Multer.File,
+  ): Promise<BankAccountsDocument> {
+    if (file) {
+      payload.qris_image_url = `uploads/qris/${file.filename}`;
+    }
+
     const created = new this.bankAccountModel(payload);
     return created.save();
   }

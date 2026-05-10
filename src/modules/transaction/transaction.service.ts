@@ -21,6 +21,12 @@ export class TransactionService {
   }
 
   async export(month: number, year: number) {
+    const matchStage: any = { 'period.year': year };
+    if (month > 0) {
+      matchStage['period.month'] = month;
+    }
+
+    
     const transactions = await this.transactionModel.aggregate([
       {
         $lookup: {
@@ -52,10 +58,7 @@ export class TransactionService {
       { $unwind: '$period' },
 
       {
-        $match: {
-          'period.month': month,
-          'period.year': year,
-        },
+        $match: matchStage ,
       },
 
       // same for anggota_id

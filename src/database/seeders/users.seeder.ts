@@ -16,8 +16,6 @@ export class UsersSeeder {
 
   async seed(): Promise<void> {
     const password_hash = await bcrypt.hash('password123', 10);
-
-    // Grab regions from DB — must run AFTER regions are seeded
     const pd = await this.regionsModel.findOne({ level: 'PD' });
     const pc = await this.regionsModel.findOne({ level: 'PC' });
     const pj = await this.regionsModel.findOne({ level: 'PJ' });
@@ -28,7 +26,7 @@ export class UsersSeeder {
 
     const users = [
       {
-        npa: 'PD-001',
+        npa: '001',
         fullname: 'Admin Bendahara PD',
         email: 'bendahara.pd@persis.id',
         no_hp: '081234567890',
@@ -38,7 +36,7 @@ export class UsersSeeder {
         is_active: true,
       },
       {
-        npa: 'PC-001',
+        npa: '002',
         fullname: 'Admin Bendahara PC',
         email: 'bendahara.pc@persis.id',
         no_hp: '081234567891',
@@ -48,7 +46,7 @@ export class UsersSeeder {
         is_active: true,
       },
       {
-        npa: 'PJ-001',
+        npa: '003',
         fullname: 'Admin Bendahara PJ',
         email: 'bendahara.pj@persis.id',
         no_hp: '081234567892',
@@ -58,17 +56,17 @@ export class UsersSeeder {
         is_active: true,
       },
       {
-        npa: 'ANQ-001',
+        npa: '004',
         fullname: 'Anggota Satu',
         email: 'anggota1@persis.id',
         no_hp: '081234567893',
         password_hash,
         role: UserRole.ANGGOTA,
-        region_id: pj._id, // anggota belongs to a jamaah (PJ)
+        region_id: pj._id,
         is_active: true,
       },
       {
-        npa: 'ANQ-002',
+        npa: '005',
         fullname: 'Anggota Dua',
         email: 'anggota2@persis.id',
         no_hp: '081234567894',

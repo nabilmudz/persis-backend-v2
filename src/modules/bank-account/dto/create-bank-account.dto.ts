@@ -1,4 +1,5 @@
-import { IsBoolean, IsMongoId, IsNotEmpty, IsOptional, IsString, IsUrl } from 'class-validator';
+import { IsBoolean, IsMongoId, IsNotEmpty, IsOptional, IsString, IsUrl, } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class CreateBankAccountDto {
   // @IsMongoId()
@@ -17,10 +18,11 @@ export class CreateBankAccountDto {
   @IsOptional()
   account_number?: string;
 
-  @IsUrl()
+  @IsString()
   @IsOptional()
   qris_image_url?: string;
 
+  @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   @IsOptional()
   is_active: boolean = true;
