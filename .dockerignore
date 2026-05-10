@@ -1,0 +1,47 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+.pnpm-debug.log
+
+# Testing
+coverage
+test
+.jest
+
+# Build artifacts
+dist
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+CHANGELOG.md
+
+# Other
+.dockerignore
+Dockerfile
+docker-compose.yml
+.editorconfig
+.eslintignore
+eslint.config.mjs
+jest.config.js
+tsconfig.build.json
+.husky
+.commitlintrc.json
