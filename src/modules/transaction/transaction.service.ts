@@ -39,8 +39,6 @@ export class TransactionService {
         },
       },
       { $unwind: '$items' },
-
-      // convert string period_id to ObjectId before lookup
       {
         $addFields: {
           'items.period_id_obj': {
@@ -62,8 +60,6 @@ export class TransactionService {
       {
         $match: matchStage ,
       },
-
-      // same for anggota_id
       {
         $addFields: {
           'items.anggota_id_obj': {
@@ -193,19 +189,16 @@ export class TransactionService {
       .sort({ month: 1 })
       .lean();
 
-    const userQuery: any = { role: 'anggota' };
-    if (regionId) userQuery.region_id = regionId;
-
-    const allUsers = await this.userModel.find({}).select('_id fullname role region_id').lean();
-    console.log('=== ALL USERS ===', JSON.stringify(allUsers, null, 2));
-
-    console.log('=== USER QUERY ===', JSON.stringify(userQuery, null, 2));
+    // Ambil semua user yang region_id-nya sama — tanpa filter role
+    const userQuery: any = {};
+    if (regionId) userQuery.region_id = new Types.ObjectId(regionId);
 
     const members = await this.userModel
       .find(userQuery)
-      .select('_id fullname npa region_id')
+      .select('_id fullname npa region_id role')
       .lean();
 
+    console.log('=== MEMBERS RESULT ===', members.length, JSON.stringify(members, null, 2));
     const memberIds = members.map((m) => m._id);
     const periodIds = periods.map((p) => p._id);
 
