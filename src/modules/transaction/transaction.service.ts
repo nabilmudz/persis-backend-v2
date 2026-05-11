@@ -189,7 +189,6 @@ export class TransactionService {
       .sort({ month: 1 })
       .lean();
 
-    // Ambil semua user yang region_id-nya sama — tanpa filter role
     const userQuery: any = {};
     if (regionId) userQuery.region_id = new Types.ObjectId(regionId);
 
@@ -198,7 +197,6 @@ export class TransactionService {
       .select('_id fullname npa region_id role')
       .lean();
 
-    console.log('=== MEMBERS RESULT ===', members.length, JSON.stringify(members, null, 2));
     const memberIds = members.map((m) => m._id);
     const periodIds = periods.map((p) => p._id);
 
