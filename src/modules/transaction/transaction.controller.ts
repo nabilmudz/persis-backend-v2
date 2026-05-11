@@ -20,6 +20,14 @@ export class TransactionController {
   ) {
     return this.transactionService.export(month, year);
   }
+  
+  @Get('members-payment-status')
+  getMembersPaymentStatus(
+    @Query('year', ParseIntPipe) year: number,
+    @Query('region_id') regionId?: string,
+  ) {
+    return this.transactionService.getMembersPaymentStatus(year, regionId);
+  }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
@@ -40,4 +48,5 @@ export class TransactionController {
   remove(@Param('id') id: string) {
     return this.transactionService.remove(id);
   }
+  
 }

@@ -3,7 +3,7 @@ import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { Transactions, TransactionsDocument } from './schemas/transaction.schema';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
-import { Model, Connection } from 'mongoose';
+import { Model, Connection, Types } from 'mongoose';
 import { TransactionItems, TransactionItemsDocument } from '../transaction-item/schemas/transaction-item.schema';
 import { DuesPeriods, DuesPeriodsDocument } from '../dues-periods/schemas/dues-periods.schema';
 import { User, UserDocument } from '../users/schemas/users.schema';
@@ -13,6 +13,8 @@ export class TransactionService {
   constructor(
     @InjectModel(Transactions.name) private transactionModel: Model<TransactionsDocument>,
     @InjectModel(TransactionItems.name) private transactionItemsModel: Model<TransactionItemsDocument>,
+    @InjectModel(DuesPeriods.name) private duesPeriodsModel: Model<DuesPeriodsDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectConnection() private connection: Connection,
   ) {}
 
@@ -183,5 +185,96 @@ export class TransactionService {
     const result = await this.transactionModel.findByIdAndDelete(id).exec();
     if (!result) throw new NotFoundException('Transaction not found');
     return { deleted: true };
+  }
+
+  async getMembersPaymentStatus(year: number, regionId?: string) {
+    const periods = await this.duesPeriodsModel
+      .find({ year, is_active: true })
+      .sort({ month: 1 })
+      .lean();
+
+    const userQuery: any = { role: 'anggota' };
+    if (regionId) userQuery.region_id = regionId;
+
+    const allUsers = await this.userModel.find({}).select('_id fullname role region_id').lean();
+    console.log('=== ALL USERS ===', JSON.stringify(allUsers, null, 2));
+
+    console.log('=== USER QUERY ===', JSON.stringify(userQuery, null, 2));
+
+    const members = await this.userModel
+      .find(userQuery)
+      .select('_id fullname npa region_id')
+      .lean();
+
+    const memberIds = members.map((m) => m._id);
+    const periodIds = periods.map((p) => p._id);
+
+    const items = await this.transactionItemsModel
+      .find({
+        anggota_id: { $in: memberIds },
+        period_id: { $in: periodIds },
+      })
+      .lean();
+
+    const itemMap = new Map<string, any>();
+    for (const item of items) {
+      const key = `${item.anggota_id}-${item.period_id}`;
+      itemMap.set(key, item);
+    }
+
+    const now = new Date();
+    const membersWithPayments = members.map((member) => {
+      const payments = periods.map((period) => {
+        const key = `${member._id}-${period._id}`;
+        const item = itemMap.get(key);
+
+        let status: 'paid' | 'tunggakan' | 'pending';
+        if (item?.status === 'paid') {
+          status = 'paid';
+        } else if (
+          period.year < now.getFullYear() ||
+          (period.year === now.getFullYear() && period.month < now.getMonth() + 1)
+        ) {
+          status = 'tunggakan';
+        } else {
+          status = 'pending';
+        }
+
+        return {
+          month: period.month,
+          year: period.year,
+          period_id: period._id,
+          amount: period.amount,
+          status,
+          transaction_id: item?.transaction_id ?? null,
+          bukti_url: item?.bukti_url ?? null,
+        };
+      });
+
+      return {
+        _id: member._id,
+        fullname: member.fullname,
+        npa: member.npa,
+        payments,
+      };
+    });
+
+    return {
+      meta: {
+        year,
+        region_id: regionId ?? null,
+        generated_at: new Date(),
+        total_members: members.length,
+        last_updated: new Date(),
+      },
+      dues_periods: periods.map((p) => ({
+        _id: p._id,
+        month: p.month,
+        year: p.year,
+        amount: p.amount,
+        is_active: p.is_active,
+      })),
+      members: membersWithPayments,
+    };
   }
 }

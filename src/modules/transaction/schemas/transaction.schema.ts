@@ -21,7 +21,7 @@ export class Transactions {
   @Prop({ required: true })
   total_amount!: number;
 
-  @Prop({ enum: ['pending', 'acc_pj', 'acc_pc', 'acc_pd'], default: 'pending' })
+  @Prop({ enum: ['pending', 'acc_pj'], default: 'pending' })
   acc_status!: string;
 
   @Prop({ type: Types.ObjectId, ref: 'User', default: null })
