@@ -29,9 +29,9 @@ RUN npm ci --only=production && \
 COPY --from=builder /app/dist ./dist
 
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001 \
-    mkdir -p uploads \
-    chown nodejs:nodejs uploads
+    adduser -S -u 1001 -G nodejs nodejs && \
+    mkdir -p uploads && \
+    chown -R nodejs:nodejs uploads
 
 USER nodejs
 
