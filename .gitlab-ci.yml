@@ -51,6 +51,12 @@ deploy:
     GIT_STRATEGY: none
   script:
   - echo "$KUBECONFIG" | base64 -d > kubeconfig
+  - |
+    kubectl --kubeconfig="$(pwd)/kubeconfig" \
+    create secret generic "${DEPLOYMENT_NAME}-${STAGE}" \
+    --from-env-file="${ENV}" \
+    --dry-run=client -o yaml | \
+    kubectl --kubeconfig="$(pwd)/kubeconfig" replace -f -
   - kubectl --kubeconfig=$(pwd)/kubeconfig create secret generic ${DEPLOYMENT_NAME}-${STAGE} --from-env-file=${ENV}
   - kubectl --kubeconfig=$(pwd)/kubeconfig set image deployment/${DEPLOYMENT_NAME}-${STAGE} app=$IMAGE_TAG
   - kubectl --kubeconfig=$(pwd)/kubeconfig rollout status deployment/${DEPLOYMENT_NAME}-${STAGE}
