@@ -49,9 +49,9 @@ deploy:
     GIT_STRATEGY: none
   script:
   - echo "$KUBECONFIG" | base64 -d > kubeconfig
-  - kubectl --kubeconfig=$(pwd)/kubeconfig create secret generic persis-mobile --from-env-file=${ENV}
-  - kubectl --kubeconfig=$(pwd)/kubeconfig set image deployment/${DEPLOYMENT_NAME} app=$IMAGE_TAG
-  - kubectl --kubeconfig=$(pwd)/kubeconfig rollout status deployment/${DEPLOYMENT_NAME}
-  - kubectl --kubeconfig=$(pwd)/kubeconfig describe deployment/${DEPLOYMENT_NAME}
+  - kubectl --kubeconfig=$(pwd)/kubeconfig create secret generic ${DEPLOYMENT_NAME}-${STAGE} --from-env-file=${ENV}
+  - kubectl --kubeconfig=$(pwd)/kubeconfig set image deployment/${DEPLOYMENT_NAME}-${STAGE} app=$IMAGE_TAG
+  - kubectl --kubeconfig=$(pwd)/kubeconfig rollout status deployment/${DEPLOYMENT_NAME}-${STAGE}
+  - kubectl --kubeconfig=$(pwd)/kubeconfig describe deployment/${DEPLOYMENT_NAME}-${STAGE}
   rules:
   - if: $CI_COMMIT_TAG
