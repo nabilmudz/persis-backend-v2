@@ -35,27 +35,21 @@ jobs:
             mkdir -p "$DEPLOY_PATH"
             cd "$DEPLOY_PATH"
 
-            # make sure we are on staging and up to date
-            if [ -d .git ]; then
-              git fetch --all
-            else
-              git clone $GIT_REPOSITORY "$DEPLOY_PATH"
-            fi
-            git fetch --all
-            git reset --hard
+            # 1. Force sync with GitHub
+            echo "📑 Syncing code from GitHub..."
+            git fetch origin staging
+            git reset --hard origin/staging
             git clean -fd
-            git checkout -f staging || git checkout -b staging
-            git pull origin staging
 
-            # install dependencies
-            echo "📦 Installing dependencies (clean install)..."
-            npm ci --no-audit --no-fund
+            # 2. Install dependencies
+            echo "📦 Installing dependencies..."
+            npm install --no-audit --no-fund
 
-            # build the project
+            # 3. Build project
             echo "🏗️ Building project..."
             npm run build
 
-            # Restart the PM2 process by name (safer than ID 0)
+            # 4. Restart PM2
             echo "🔄 Restarting PM2 process..."
             pm2 restart "8001 - Staging Persis Backend" --update-env
 
