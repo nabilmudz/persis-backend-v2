@@ -24,9 +24,11 @@ export class TransactionController {
   @Get('members-payment-status')
   getMembersPaymentStatus(
     @Query('year', ParseIntPipe) year: number,
+    @Query('month') month?: string,
     @Query('region_id') regionId?: string,
   ) {
-    return this.transactionService.getMembersPaymentStatus(year, regionId);
+    const parsedMonth = month ? parseInt(month, 10) : undefined;
+    return this.transactionService.getMembersPaymentStatus(year, parsedMonth, regionId);
   }
 
   @Get(':id')

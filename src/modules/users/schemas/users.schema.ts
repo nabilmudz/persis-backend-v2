@@ -24,7 +24,7 @@ export class User {
   @Prop({ unique: true, sparse: true, trim: true })
   no_hp?: string;
 
-  @Prop({ required: true, select: false })  
+  @Prop({ required: true, select: false })
   password_hash!: string;
 
   @Prop({ required: true, enum: UserRole, default: UserRole.ANGGOTA })

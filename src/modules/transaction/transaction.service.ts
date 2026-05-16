@@ -183,9 +183,14 @@ export class TransactionService {
     return { deleted: true };
   }
 
-  async getMembersPaymentStatus(year: number, regionId?: string) {
+  async getMembersPaymentStatus(year: number, month?: number, regionId?: string) {
+    const periodQuery: any = { year, is_active: true };
+    if (month && month > 0) {
+      periodQuery.month = month;
+    }
+
     const periods = await this.duesPeriodsModel
-      .find({ year, is_active: true })
+      .find(periodQuery)
       .sort({ month: 1 })
       .lean();
 
