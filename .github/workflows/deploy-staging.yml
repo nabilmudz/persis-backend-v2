@@ -19,8 +19,8 @@ jobs:
           password: ${{ secrets.PASSWORD }}
           port: ${{ secrets.PORT }}
           script: |
+            cd ${{ secrets.DEPLOY_PATH }}
             git pull origin staging
             npm install
-            npm run build
             pm2 restart "8001 - Staging Persis Backend" --update-env
             echo "Deploy complete"
