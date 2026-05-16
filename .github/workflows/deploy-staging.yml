@@ -41,8 +41,10 @@ jobs:
             else
               git clone $GIT_REPOSITORY "$DEPLOY_PATH"
             fi
+            git fetch --all
             git reset --hard
-            git checkout staging || git checkout -b staging
+            git clean -fd
+            git checkout -f staging || git checkout -b staging
             git pull origin staging
 
             # install dependencies
