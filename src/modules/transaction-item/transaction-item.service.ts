@@ -14,7 +14,7 @@ export class TransactionItemService {
     private readonly transactionItemModel: Model<TransactionItemsDocument>,
     @InjectModel(DuesPeriods.name)
     private readonly periodModel: Model<DuesPeriodsDocument>
-  ) {}
+  ) { }
 
   async findAll(): Promise<TransactionItemsDocument[]> {
     return this.transactionItemModel.find().exec();
@@ -28,7 +28,7 @@ export class TransactionItemService {
 
     const now = new Date();
     const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1; // 1-12
+    const currentMonth = now.getMonth() + 1;
 
     return periods.map(period => {
       const item = items.find(
@@ -36,7 +36,7 @@ export class TransactionItemService {
       );
 
       if (item) {
-        return { period, item, status: 'paid' }; // hijau
+        return { period, item, status: 'paid' };
       }
 
       const isPast =
@@ -46,7 +46,7 @@ export class TransactionItemService {
       return {
         period,
         item: null,
-        status: isPast ? 'tunggakan' : 'pending', // merah atau abu
+        status: isPast ? 'tunggakan' : 'pending',
       };
     });
   }

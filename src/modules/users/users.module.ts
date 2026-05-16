@@ -8,6 +8,8 @@ import { User, UserSchema } from './schemas/users.schema';
 import jwtConfig from '../../config/jwt.config';
 import { EmailModule } from '../../helper/mail/email.module';
 import { OtpModule } from '../otp/otp.module';
+import { TransactionItems, TransactionItemsSchema } from '../transaction-item/schemas/transaction-item.schema';
+import { DuesPeriods, DuesPeriodsSchema } from '../dues-periods/schemas/dues-periods.schema';
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { OtpModule } from '../otp/otp.module';
     OtpModule,
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
+      { name: TransactionItems.name, schema: TransactionItemsSchema },
+      { name: DuesPeriods.name, schema: DuesPeriodsSchema },
     ]),
     ConfigModule.forFeature(jwtConfig),
   ],

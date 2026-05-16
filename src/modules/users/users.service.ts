@@ -17,6 +17,8 @@ import { UpdateUsersDto } from './dto/update-users.dto';
 import { User, UserDocument } from './schemas/users.schema';
 import { EmailService } from '../../helper/mail/email.service';
 import { OtpService } from '../otp/otp.service';
+import { TransactionItems, TransactionItemsDocument } from '../transaction-item/schemas/transaction-item.schema';
+import { DuesPeriods, DuesPeriodsDocument } from '../dues-periods/schemas/dues-periods.schema';
 
 export interface LoginResponse {
   user: {
@@ -33,6 +35,10 @@ export class UsersService {
   constructor(
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+    @InjectModel(TransactionItems.name)
+    private readonly transactionItemModel: Model<TransactionItemsDocument>,
+    @InjectModel(DuesPeriods.name)
+    private readonly periodModel: Model<DuesPeriodsDocument>,
     @Inject(jwtConfig.KEY) private readonly jwtCfg: config.ConfigType<typeof jwtConfig>,
     private otpService: OtpService,
     private emailService: EmailService,
@@ -40,6 +46,36 @@ export class UsersService {
 
   async findAll(): Promise<UserDocument[]> {
     return this.userModel.find().select('-password_hash').exec();
+  }
+
+  async findAllWithStatus(): Promise<any[]> {
+    const [users, periods, items] = await Promise.all([
+      this.userModel.find().select('-password_hash').exec(),
+      this.periodModel.find({ is_active: true }).exec(),
+      this.transactionItemModel.find().exec(),
+    ]);
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
+    const pastPeriods = periods.filter(period => 
+      period.year < currentYear || (period.year === currentYear && period.month < currentMonth)
+    );
+
+    return users.map(user => {
+      const userItems = items.filter(item => item.anggota_id.toString() === user._id.toString());
+      
+      const hasTunggakan = pastPeriods.some(period => {
+        const item = userItems.find(i => i.period_id.toString() === period._id.toString());
+        return !item;
+      });
+
+      return {
+        ...user.toObject(),
+        status_tag: hasTunggakan ? 'tunggakan' : 'lunas',
+      };
+    });
   }
 
   async findOne(id: string): Promise<UserDocument> {
