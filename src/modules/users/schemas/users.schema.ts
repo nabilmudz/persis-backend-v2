@@ -18,8 +18,8 @@ export class User {
   @Prop({ required: true, trim: true })
   fullname!: string;
 
-  @Prop({ required: true, unique: true, lowercase: true, trim: true })
-  email!: string;
+  @Prop({ unique: true, lowercase: true, trim: true, sparse: true })
+  email?: string;
 
   @Prop({ unique: true, sparse: true, trim: true })
   no_hp?: string;
@@ -39,6 +39,4 @@ export class User {
 
 export const UserSchema = SchemaFactory.createForClass(User);
 
-UserSchema.index({ npa: 1 });
-UserSchema.index({ email: 1 });
 UserSchema.index({ role: 1, region_id: 1 });

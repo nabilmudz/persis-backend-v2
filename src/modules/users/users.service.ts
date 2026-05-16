@@ -19,6 +19,7 @@ import { EmailService } from '../../helper/mail/email.service';
 import { OtpService } from '../otp/otp.service';
 import { TransactionItems, TransactionItemsDocument } from '../transaction-item/schemas/transaction-item.schema';
 import { DuesPeriods, DuesPeriodsDocument } from '../dues-periods/schemas/dues-periods.schema';
+import { RegionsService } from '../regions/regions.service';
 
 export interface LoginResponse {
   user: {
@@ -42,15 +43,16 @@ export class UsersService {
     @Inject(jwtConfig.KEY) private readonly jwtCfg: config.ConfigType<typeof jwtConfig>,
     private otpService: OtpService,
     private emailService: EmailService,
+    private regionsService: RegionsService,
   ) {}  
 
   async findAll(): Promise<UserDocument[]> {
-    return this.userModel.find().select('-password_hash').exec();
+    return this.userModel.find().populate('region_id').select('-password_hash').exec();
   }
 
   async findAllWithStatus(): Promise<any[]> {
     const [users, periods, items] = await Promise.all([
-      this.userModel.find().select('-password_hash').exec(),
+      this.userModel.find().populate('region_id').select('-password_hash').exec(),
       this.periodModel.find({ is_active: true }).exec(),
       this.transactionItemModel.find().exec(),
     ]);
@@ -94,8 +96,10 @@ export class UsersService {
   }
 
   async findByRegion(regionId: string): Promise<UserDocument[]> {
+    const descendantIds = await this.regionsService.getDescendants(regionId);
     return this.userModel
-      .find({ region_id: new Types.ObjectId(regionId) })
+      .find({ region_id: { $in: descendantIds.map(id => new Types.ObjectId(id)) } })
+      .populate('region_id')
       .select('-password_hash')
       .exec();
   }

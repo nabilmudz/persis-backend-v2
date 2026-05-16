@@ -14,11 +14,23 @@ export class RegionsService {
   ) {}
 
   async findAll(): Promise<RegionsDocument[]> {
-    return this.regionsModel.find().exec();
+    return this.regionsModel.find().populate('parent_id').exec();
+  }
+
+  async getDescendants(id: string): Promise<string[]> {
+    const descendants: string[] = [id];
+    const children = await this.regionsModel.find({ parent_id: id }).exec();
+    
+    for (const child of children) {
+      const childDescendants = await this.getDescendants(child._id.toString());
+      descendants.push(...childDescendants);
+    }
+    
+    return descendants;
   }
 
   async findOne(id: string): Promise<RegionsDocument> {
-    const doc = await this.regionsModel.findById(id).exec();
+    const doc = await this.regionsModel.findById(id).populate('parent_id').exec();
     if (!doc) throw new NotFoundException('Regions not found');
     return doc;
   }

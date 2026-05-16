@@ -5,10 +5,13 @@ export type RegionsDocument = Regions & Document;
 
 @Schema({ timestamps: true })
 export class Regions {
+  @Prop({ required: true, unique: true, trim: true })
+  id!: string;
+
   @Prop({ required: true, trim: true })
   name!: string;
 
-  @Prop({ required: true, enum: ['PJ', 'PC', 'PD'] })
+  @Prop({ required: true, enum: ['PP', 'PW', 'PD', 'PC', 'PJ'] })
   level!: string;
 
   @Prop({ type: Types.ObjectId, ref: 'Regions', default: null })

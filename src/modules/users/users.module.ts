@@ -10,11 +10,13 @@ import { EmailModule } from '../../helper/mail/email.module';
 import { OtpModule } from '../otp/otp.module';
 import { TransactionItems, TransactionItemsSchema } from '../transaction-item/schemas/transaction-item.schema';
 import { DuesPeriods, DuesPeriodsSchema } from '../dues-periods/schemas/dues-periods.schema';
+import { RegionsModule } from '../regions/regions.module';
 
 @Module({
   imports: [
     EmailModule,
     OtpModule,
+    RegionsModule,
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: TransactionItems.name, schema: TransactionItemsSchema },
