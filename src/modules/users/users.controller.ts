@@ -45,12 +45,12 @@ export class UsersController {
     return this.usersService.remove(id);
   }
 
-  @Get('check-npa/:npa') 
+  @Get('check-npa/:npa')
   async findByNpa(@Param('npa') npa: string) {
     return this.usersService.checkNpa(npa);
   }
 
-  @Get('region/:regionId') 
+  @Get('region/:regionId')
   async findByRegion(@Param('regionId') npa: string) {
     return this.usersService.findByRegion(npa);
   }
@@ -68,5 +68,20 @@ export class UsersController {
   @Post('verify-otp')
   verifyOtp(@Body() dto: VerifyOtpDto) {
     return this.usersService.verifyOtp(dto.npa, dto.otp);
+  }
+
+  @Post('forgot-password')
+  async forgotPassword(@Body() body: { identifier: string }) {
+    return this.usersService.forgotPassword(body.identifier);
+  }
+
+  @Post('verify-reset-otp')
+  async verifyResetOtp(@Body() body: { identifier: string; otp: string }) {
+    return this.usersService.verifyResetOtp(body.identifier, body.otp);
+  }
+
+  @Post('reset-password')
+  async resetPassword(@Body() body: { identifier: string; otp: string; new_password: string }) {
+    return this.usersService.resetPassword(body.identifier, body.otp, body.new_password);
   }
 }
