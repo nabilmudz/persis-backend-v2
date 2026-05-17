@@ -22,14 +22,13 @@ export class TransactionService {
     return this.transactionModel.find().exec();
   }
 
-  async export(month: number, year: number) {
+  async export(month: number, year: number, regionId?: string) {
     const matchStage: any = { 'period.year': year };
     if (month > 0) {
       matchStage['period.month'] = month;
     }
 
-    
-    const transactions = await this.transactionModel.aggregate([
+    const pipeline: any[] = [
       {
         $lookup: {
           from: 'transactionitems',
@@ -46,7 +45,6 @@ export class TransactionService {
           },
         },
       },
-
       {
         $lookup: {
           from: 'duesperiods',
@@ -56,9 +54,8 @@ export class TransactionService {
         },
       },
       { $unwind: '$period' },
-
       {
-        $match: matchStage ,
+        $match: matchStage,
       },
       {
         $addFields: {
@@ -67,7 +64,6 @@ export class TransactionService {
           },
         },
       },
-
       {
         $lookup: {
           from: 'users',
@@ -77,7 +73,8 @@ export class TransactionService {
         },
       },
       { $unwind: '$member' },
-
+      // Optional region filter
+      ...(regionId ? [{ $match: { 'member.region_id': new Types.ObjectId(regionId) } }] : []),
       {
         $project: {
           transaction_id: '$_id',
@@ -91,7 +88,9 @@ export class TransactionService {
           item_status: '$items.status',
         },
       },
-    ]);
+    ];
+
+    const transactions = await this.transactionModel.aggregate(pipeline);
 
     const totalAmount = transactions.reduce(
       (acc, item) => acc + (item.total_amount ?? 0),
@@ -104,6 +103,7 @@ export class TransactionService {
         year,
         generated_at: new Date(),
         total_transactions: transactions.length,
+        ...(regionId ? { region_id: regionId } : {}),
       },
       summary: {
         total_amount: totalAmount,
@@ -118,6 +118,8 @@ export class TransactionService {
       data: transactions,
     };
   }
+
+// Duplicate export method removed
   
   async findOne(id: string): Promise<TransactionsDocument> {
     const doc = this.transactionModel

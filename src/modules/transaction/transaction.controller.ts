@@ -17,8 +17,9 @@ export class TransactionController {
   async export(
     @Query('month', ParseIntPipe) month: number,
     @Query('year', ParseIntPipe) year: number,
+    @Query('region_id') regionId?: string,
   ) {
-    return this.transactionService.export(month, year);
+    return this.transactionService.export(month, year, regionId);
   }
   
   @Get('members-payment-status')
