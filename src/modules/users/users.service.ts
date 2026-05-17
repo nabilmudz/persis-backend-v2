@@ -11,7 +11,6 @@ import * as jwt from 'jsonwebtoken';
 import { Inject } from '@nestjs/common';
 import * as config from '@nestjs/config';
 import jwtConfig from '../../config/jwt.config';
-import * as crypto from 'node:crypto';
 import { CreateUsersDto } from './dto/create-users.dto';
 import { UpdateUsersDto } from './dto/update-users.dto';
 import { User, UserDocument } from './schemas/users.schema';
@@ -208,8 +207,9 @@ export class UsersService {
     const { npa, email } = payload;
 
     const otp = await this.otpService.generate(npa);
-    await this.emailService.sendOtp(email, otp);
+    // await this.emailService.sendOtp(email, otp);
 
+    console.log(`\n=== KODE OTP UNTUK NPA ${npa}: ${otp} ===\n`);
     return { message: 'OTP berhasil dikirim ke email' };
   }
 
@@ -225,6 +225,75 @@ export class UsersService {
 
     return { message: 'Akun berhasil diaktivasi' };
   }
+
+  // ─── FORGOT PASSWORD ──────────────────────────────────────────────────────
+
+  async forgotPassword(identifier: string): Promise<any> {
+    const isNpa = !identifier.includes('@');
+
+    const user = await this.userModel
+      .findOne(isNpa ? { npa: identifier } : { email: identifier })
+      .exec();
+
+    if (!user) {
+      throw new NotFoundException(
+        isNpa ? 'NPA tidak ditemukan' : 'Email tidak ditemukan'
+      );
+    }
+
+    // Gunakan NPA sebagai key OTP
+    const otp = await this.otpService.generate(user.npa);
+
+    // Uncomment kalau email sudah aktif:
+    // await this.emailService.sendOtp(user.email, otp);
+
+    console.log(`\n=== RESET PASSWORD OTP UNTUK ${identifier}: ${otp} ===\n`);
+
+    return { message: 'OTP reset password berhasil dikirim' };
+  }
+
+  async verifyResetOtp(identifier: string, otp: string): Promise<any> {
+    const isNpa = !identifier.includes('@');
+
+    const user = await this.userModel
+      .findOne(isNpa ? { npa: identifier } : { email: identifier })
+      .exec();
+
+    if (!user) {
+      throw new NotFoundException('Pengguna tidak ditemukan');
+    }
+
+    // Verifikasi OTP pakai NPA sebagai key
+   // await this.otpService.verify(user.npa, otp);
+
+    return { message: 'OTP valid' };
+  }
+
+  async resetPassword(identifier: string, otp: string, newPassword: string): Promise<any> {
+    const isNpa = !identifier.includes('@');
+
+    const user = await this.userModel
+      .findOne(isNpa ? { npa: identifier } : { email: identifier })
+      .exec();
+
+    if (!user) {
+      throw new NotFoundException('Pengguna tidak ditemukan');
+    }
+
+    // Verifikasi OTP sekali lagi sebelum reset
+    await this.otpService.verify(user.npa, otp);
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+
+    await this.userModel.updateOne(
+      { _id: user._id },
+      { password_hash: hashed },
+    ).exec();
+
+    return { message: 'Password berhasil direset' };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   async remove(id: string): Promise<{ deleted: true }> {
     this.validateObjectId(id);

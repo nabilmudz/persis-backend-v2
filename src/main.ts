@@ -20,6 +20,9 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
   app.setGlobalPrefix('api');
 
+  
+  app.enableCors();
+
   await app.listen(3000, '0.0.0.0');
 
   console.log(`Application is running on: ${await app.getUrl()}`);
