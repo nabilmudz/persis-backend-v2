@@ -44,7 +44,7 @@ export class UsersService {
     private otpService: OtpService,
     private emailService: EmailService,
     private regionsService: RegionsService,
-  ) {}  
+  ) { }
 
   async findAll(): Promise<UserDocument[]> {
     return this.userModel.find().populate('region_id').select('-password_hash').exec();
@@ -61,13 +61,13 @@ export class UsersService {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
 
-    const pastPeriods = periods.filter(period => 
+    const pastPeriods = periods.filter(period =>
       period.year < currentYear || (period.year === currentYear && period.month < currentMonth)
     );
 
     return users.map(user => {
       const userItems = items.filter(item => item.anggota_id.toString() === user._id.toString());
-      
+
       const hasTunggakan = pastPeriods.some(period => {
         const item = userItems.find(i => i.period_id.toString() === period._id.toString());
         return !item;
@@ -237,5 +237,51 @@ export class UsersService {
     if (!Types.ObjectId.isValid(id)) {
       throw new BadRequestException('ID tidak valid');
     }
+  }
+
+  async forgotPassword(identifier: string): Promise<any> {
+    const isNpa = !identifier.includes('@');
+    const user = await this.userModel
+      .findOne(isNpa ? { npa: identifier } : { email: identifier })
+      .exec();
+
+    if (!user) {
+      throw new NotFoundException(
+        isNpa ? 'NPA tidak ditemukan' : 'Email tidak ditemukan'
+      );
+    }
+    const otp = await this.otpService.generate(user.npa);
+    console.log(`\n=== RESET PASSWORD OTP UNTUK ${identifier}: ${otp} ===\n`);
+    return { message: 'OTP reset password berhasil dikirim' };
+  }
+
+  async verifyResetOtp(identifier: string, otp: string): Promise<any> {
+    const isNpa = !identifier.includes('@');
+    const user = await this.userModel
+      .findOne(isNpa ? { npa: identifier } : { email: identifier })
+      .exec();
+
+    if (!user) {
+      throw new NotFoundException('Pengguna tidak ditemukan');
+    }
+    return { message: 'OTP valid' };
+  }
+
+  async resetPassword(identifier: string, otp: string, newPassword: string): Promise<any> {
+    const isNpa = !identifier.includes('@');
+    const user = await this.userModel
+      .findOne(isNpa ? { npa: identifier } : { email: identifier })
+      .exec();
+
+    if (!user) {
+      throw new NotFoundException('Pengguna tidak ditemukan');
+    }
+    await this.otpService.verify(user.npa, otp);
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await this.userModel.updateOne(
+      { _id: user._id },
+      { password_hash: hashed },
+    ).exec();
+    return { message: 'Password berhasil direset' };
   }
 }
