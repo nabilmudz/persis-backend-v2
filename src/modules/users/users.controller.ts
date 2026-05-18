@@ -56,8 +56,9 @@ export class UsersController {
   }
 
   @Post('set-password')
-  async setPassword(@Body() body: { npa: string; password: string }) {
-    return this.usersService.setPassword(body.npa, body.password);
+  async setPassword(@Body() body: any) {
+    const identifier = body.npa || body.email || body.identifier;
+    return this.usersService.setPassword(identifier, body.password);
   }
 
   @Post('activate')
@@ -68,20 +69,5 @@ export class UsersController {
   @Post('verify-otp')
   verifyOtp(@Body() dto: VerifyOtpDto) {
     return this.usersService.verifyOtp(dto.npa, dto.otp);
-  }
-
-  @Post('forgot-password')
-  async forgotPassword(@Body() body: { identifier: string }) {
-    return this.usersService.forgotPassword(body.identifier);
-  }
-
-  @Post('verify-reset-otp')
-  async verifyResetOtp(@Body() body: { identifier: string; otp: string }) {
-    return this.usersService.verifyResetOtp(body.identifier, body.otp);
-  }
-
-  @Post('reset-password')
-  async resetPassword(@Body() body: { identifier: string; otp: string; new_password: string }) {
-    return this.usersService.resetPassword(body.identifier, body.otp, body.new_password);
   }
 }

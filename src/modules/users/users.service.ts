@@ -182,23 +182,30 @@ export class UsersService {
 
     return {
       message: 'NPA valid',
+      id: user._id,
       npa: user.npa,
       fullname: user.fullname,
     };
   }
 
-  async setPassword(npa: string, password: string) {
-    const user = await this.userModel.findOne({ npa }).exec();
+  async setPassword(npaOrEmail: string, password: string) {
+    if (!npaOrEmail) {
+      throw new BadRequestException('Identifier (NPA or Email) is required');
+    }
+    const isNpa = !npaOrEmail.includes('@');
+    const user = await this.userModel.findOne(
+      isNpa ? { npa: npaOrEmail } : { email: npaOrEmail }
+    ).exec();
 
     if (!user) {
-      throw new NotFoundException('NPA tidak ditemukan');
+      throw new NotFoundException(isNpa ? 'NPA tidak ditemukan' : 'Email tidak ditemukan');
     }
 
     const hashed = await bcrypt.hash(password, 10);
 
     await this.userModel.updateOne(
-      { npa },
-      { password_hash: hashed, isActive: true },
+      { _id: user._id },
+      { password_hash: hashed, is_active: true },
     ).exec();
 
     return { message: 'Password berhasil disimpan' };
@@ -206,22 +213,35 @@ export class UsersService {
 
   async activate(payload: any): Promise<any> {
     const { npa, email } = payload;
+    const identifier = npa || email;
 
-    const otp = await this.otpService.generate(npa);
-    await this.emailService.sendOtp(email, otp);
+    const isNpa = identifier && !identifier.includes('@');
+    const user = await this.userModel.findOne(
+      isNpa ? { npa: identifier } : { email: identifier }
+    ).exec();
+
+    if (!user) throw new NotFoundException('User tidak ditemukan');
+
+    const otp = await this.otpService.generate(user.npa);
+    await this.emailService.sendOtp(user.email, otp);
 
     return { message: 'OTP berhasil dikirim ke email' };
   }
 
-  async verifyOtp(npa: string, otp: string): Promise<any> {
-    await this.otpService.verify(npa, otp);
+  async verifyOtp(npaOrEmail: string, otp: string): Promise<any> {
+    const isNpa = !npaOrEmail.includes('@');
+    const user = await this.userModel.findOne(
+      isNpa ? { npa: npaOrEmail } : { email: npaOrEmail }
+    ).exec();
 
-    const result = await this.userModel.updateOne(
-      { npa },
+    if (!user) throw new BadRequestException('User tidak ditemukan');
+
+    await this.otpService.verify(user.npa, otp);
+
+    await this.userModel.updateOne(
+      { _id: user._id },
       { is_active: true },
     );
-
-    if (result.matchedCount === 0) throw new BadRequestException('User tidak ditemukan');
 
     return { message: 'Akun berhasil diaktivasi' };
   }
@@ -239,49 +259,4 @@ export class UsersService {
     }
   }
 
-  async forgotPassword(identifier: string): Promise<any> {
-    const isNpa = !identifier.includes('@');
-    const user = await this.userModel
-      .findOne(isNpa ? { npa: identifier } : { email: identifier })
-      .exec();
-
-    if (!user) {
-      throw new NotFoundException(
-        isNpa ? 'NPA tidak ditemukan' : 'Email tidak ditemukan'
-      );
-    }
-    const otp = await this.otpService.generate(user.npa);
-    console.log(`\n=== RESET PASSWORD OTP UNTUK ${identifier}: ${otp} ===\n`);
-    return { message: 'OTP reset password berhasil dikirim' };
-  }
-
-  async verifyResetOtp(identifier: string, otp: string): Promise<any> {
-    const isNpa = !identifier.includes('@');
-    const user = await this.userModel
-      .findOne(isNpa ? { npa: identifier } : { email: identifier })
-      .exec();
-
-    if (!user) {
-      throw new NotFoundException('Pengguna tidak ditemukan');
-    }
-    return { message: 'OTP valid' };
-  }
-
-  async resetPassword(identifier: string, otp: string, newPassword: string): Promise<any> {
-    const isNpa = !identifier.includes('@');
-    const user = await this.userModel
-      .findOne(isNpa ? { npa: identifier } : { email: identifier })
-      .exec();
-
-    if (!user) {
-      throw new NotFoundException('Pengguna tidak ditemukan');
-    }
-    await this.otpService.verify(user.npa, otp);
-    const hashed = await bcrypt.hash(newPassword, 10);
-    await this.userModel.updateOne(
-      { _id: user._id },
-      { password_hash: hashed },
-    ).exec();
-    return { message: 'Password berhasil direset' };
-  }
 }
