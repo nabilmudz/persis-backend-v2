@@ -35,21 +35,17 @@ jobs:
             mkdir -p "$DEPLOY_PATH"
             cd "$DEPLOY_PATH"
 
-            # 1. Force sync with GitHub
             echo "📑 Syncing code from GitHub..."
             git fetch origin staging
             git reset --hard origin/staging
             git clean -fd
 
-            # 2. Install dependencies
             echo "📦 Installing dependencies..."
-            npm install --no-audit --no-fund
+            npm install --no-audit --no-fund --legacy-peer-deps
 
-            # 3. Build project
             echo "🏗️ Building project..."
             npm run build
 
-            # 4. Restart PM2
             echo "🔄 Restarting PM2 process..."
             pm2 restart "8001 - Staging Persis Backend" --update-env
 
