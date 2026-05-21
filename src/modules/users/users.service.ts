@@ -171,7 +171,7 @@ export class UsersService {
   }
 
   async checkNpa(npa: string) {
-    const user = await this.userModel.findOne({ npa }).exec();
+    const user = await this.userModel.findOne({ npa }).populate('region_id', 'name').exec();
     if (!user) {
       throw new NotFoundException('NPA tidak ditemukan');
     }
@@ -185,6 +185,7 @@ export class UsersService {
       id: user._id,
       npa: user.npa,
       fullname: user.fullname,
+      region_name: (user.region_id as any)?.name ?? null,
     };
   }
 
@@ -225,7 +226,7 @@ export class UsersService {
     const otp = await this.otpService.generate(user.npa);
     await this.emailService.sendOtp(user.email, otp);
 
-    return { message: 'OTP berhasil dikirim ke email' };
+    return { message: 'OTP berhasil dikirim ke email', email: user.email };
   }
 
   async verifyOtp(npaOrEmail: string, otp: string): Promise<any> {

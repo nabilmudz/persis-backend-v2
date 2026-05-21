@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
 
 import { CreateUsersDto } from './dto/create-users.dto';
 import { UpdateUsersDto } from './dto/update-users.dto';
@@ -68,6 +68,11 @@ export class UsersController {
 
   @Post('verify-otp')
   verifyOtp(@Body() dto: VerifyOtpDto) {
-    return this.usersService.verifyOtp(dto.npa, dto.otp);
+    const identifier = dto.npa || dto.email;
+    if (!identifier) {
+      throw new BadRequestException('NPA atau email wajib diisi');
+    }
+
+    return this.usersService.verifyOtp(identifier, dto.otp);
   }
 }

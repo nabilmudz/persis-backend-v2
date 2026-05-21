@@ -25,9 +25,6 @@ export class CreateUsersDto {
 
   @IsString()
   @IsOptional()
-  @Matches(/^(\+62|62|0)8[1-9][0-9]{6,9}$/, {
-    message: 'no_hp format tidak valid',
-  })
   no_hp?: string;
 
   @IsString()
