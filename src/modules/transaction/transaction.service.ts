@@ -84,6 +84,8 @@ export class TransactionService {
           created_at: 1,
           total_amount: 1,
           status: 1,
+          acc_by: 1,
+          acc_status: 1,
           member_name: '$member.fullname',
           npa: '$member.npa',
           period_month: '$period.month',

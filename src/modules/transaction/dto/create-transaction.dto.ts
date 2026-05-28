@@ -43,4 +43,17 @@ export class CreateTransactionsDto {
   @Type(() => CreateTransactionItemDto)
   @IsNotEmpty()
   items!: CreateTransactionItemDto[];
+
+    @IsMongoId()
+  @IsOptional()
+  acc_by?: string;
+
+  @IsDateString()
+  @IsOptional()
+  acc_at?: string;
+
+  @IsDateString()
+  @IsOptional()
+  synced_at?: string;
+
 }
