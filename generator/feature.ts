@@ -77,7 +77,6 @@ registerModuleImport(rootDir, featurePascal, featureName);
 console.log(`\nFeature "${featureName}" generated successfully.`);
 console.log(`Next: add your fields to schemas/${featureName}.schema.ts and DTOs.`);
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
 
 function parseArgs(argv: string[]): ParsedArgs {
   const parsed: ParsedArgs = { _: [] };
@@ -134,8 +133,6 @@ function registerModuleImport(rootDir: string, featurePascal: string, featureNam
   }
 
   let content = fs.readFileSync(appModulePath, 'utf8');
-
-  // ─── 1. Add ES import line at top ─────────────────────────────────────────
   const importLine = `import { ${featurePascal}Module } from './modules/${featureName}/${featureName}.module';`;
   if (!content.includes(importLine)) {
     const lines = content.split('\n');
@@ -147,22 +144,18 @@ function registerModuleImport(rootDir: string, featurePascal: string, featureNam
     content = lines.join('\n');
   }
 
-  // Already registered in @Module imports?
   if (content.includes(`${featurePascal}Module`)) {
     console.log(`  skipped  ${featurePascal}Module already registered in app.module.ts`);
     fs.writeFileSync(appModulePath, content, 'utf8');
     return;
   }
 
-  // ─── 2. Locate @Module({ decorator ────────────────────────────────────────
   const moduleDecoratorIdx = content.indexOf('@Module({');
   if (moduleDecoratorIdx === -1) {
     console.warn('\nWarning: @Module decorator not found. Add manually.');
     return;
   }
 
-  // ─── 3. Walk chars from @Module to find `imports:` at depth 1 ─────────────
-  // depth 1 = directly inside @Module({...}), not nested in forRootAsync etc.
   const afterDecorator = content.slice(moduleDecoratorIdx);
   let depth = 0;
   let importsKeyOffset = -1;
@@ -184,8 +177,6 @@ function registerModuleImport(rootDir: string, featurePascal: string, featureNam
   }
 
   const importsKeyIdx = moduleDecoratorIdx + importsKeyOffset;
-
-  // ─── 4. Find the matching closing ] of @Module imports array ──────────────
   const fromImports = content.slice(importsKeyIdx);
   const bracketOpen = fromImports.indexOf('[');
   let bracketDepth = 0;
@@ -209,7 +200,6 @@ function registerModuleImport(rootDir: string, featurePascal: string, featureNam
 
   const closingBracketIdx = importsKeyIdx + closingBracketOffset;
 
-  // ─── 5. Insert module before the closing ] ────────────────────────────────
   const before = content.slice(0, closingBracketIdx).trimEnd();
   const after = content.slice(closingBracketIdx);
   const needsComma = !before.endsWith('[');
@@ -219,8 +209,6 @@ function registerModuleImport(rootDir: string, featurePascal: string, featureNam
   fs.writeFileSync(appModulePath, content, 'utf8');
   console.log(`  updated  src/app.module.ts`);
 }
-
-// ─── File Templates ──────────────────────────────────────────────────────────
 
 function generateSchemaFile(featurePascal: string, featureName: string): string {
   return `import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';

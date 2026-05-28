@@ -16,84 +16,77 @@ export class TransactionService {
     @InjectModel(DuesPeriods.name) private duesPeriodsModel: Model<DuesPeriodsDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectConnection() private connection: Connection,
-  ) {}
+  ) { }
 
   async findAll() {
     return this.transactionModel.find().exec();
   }
 
   async export(month: number, year: number, regionId?: string) {
-    const matchStage: any = { 'period.year': year };
+    const periodMatch: any = { 'period.year': year };
     if (month > 0) {
-      matchStage['period.month'] = month;
+      periodMatch['period.month'] = month;
     }
 
     const pipeline: any[] = [
       {
-        $lookup: {
-          from: 'transactionitems',
-          localField: '_id',
-          foreignField: 'transaction_id',
-          as: 'items',
-        },
-      },
-      { $unwind: '$items' },
-      {
         $addFields: {
-          'items.period_id_obj': {
-            $toObjectId: '$items.period_id',
-          },
+          period_id_obj: { $toObjectId: '$period_id' },
         },
       },
       {
         $lookup: {
           from: 'duesperiods',
-          localField: 'items.period_id_obj',
+          localField: 'period_id_obj',
           foreignField: '_id',
           as: 'period',
         },
       },
       { $unwind: '$period' },
-      {
-        $match: matchStage,
-      },
+      { $match: periodMatch },
       {
         $addFields: {
-          'items.anggota_id_obj': {
-            $toObjectId: '$items.anggota_id',
-          },
+          anggota_id_obj: { $toObjectId: '$anggota_id' },
         },
       },
       {
         $lookup: {
           from: 'users',
-          localField: 'items.anggota_id_obj',
+          localField: 'anggota_id_obj',
           foreignField: '_id',
           as: 'member',
         },
       },
       { $unwind: '$member' },
-      // Optional region filter
       ...(regionId ? [{ $match: { 'member.region_id': new Types.ObjectId(regionId) } }] : []),
       {
+        $lookup: {
+          from: 'transactions',
+          localField: 'transaction_id',
+          foreignField: '_id',
+          as: 'transaction',
+        },
+      },
+      { $unwind: { path: '$transaction', preserveNullAndEmptyArrays: true } },
+      {
         $project: {
-          transaction_id: '$_id',
-          created_at: 1,
-          total_amount: 1,
-          status: 1,
+          _id: 1,
+          transaction_id: 1,
+          created_at: '$transaction.created_at',
+          amount: '$period.amount',
+          status: '$status',
           member_name: '$member.fullname',
           npa: '$member.npa',
           period_month: '$period.month',
           period_year: '$period.year',
-          item_status: '$items.status',
+          item_status: '$status',
         },
       },
     ];
+    const items = await this.transactionItemsModel.aggregate(pipeline);
 
-    const transactions = await this.transactionModel.aggregate(pipeline);
-
-    const totalAmount = transactions.reduce(
-      (acc, item) => acc + (item.total_amount ?? 0),
+    const totalAmount = items.reduce(
+      (acc, item) => acc + (item.amount ?? 0),
       0,
     );
 
@@ -102,7 +95,7 @@ export class TransactionService {
         month,
         year,
         generated_at: new Date(),
-        total_transactions: transactions.length,
+        total_transactions: items.length,
         ...(regionId ? { region_id: regionId } : {}),
       },
       summary: {
@@ -115,23 +108,21 @@ export class TransactionService {
           pp: { percentage: 15, amount: totalAmount * 0.15 },
         },
       },
-      data: transactions,
+      data: items,
     };
   }
 
-// Duplicate export method removed
-  
   async findOne(id: string): Promise<TransactionsDocument> {
     const doc = this.transactionModel
-    .findById(id)
-    .populate({
-      path: 'transaction_items',
-      populate: [
-        { path: 'anggota_id' },
-        { path: 'period_id' },
-      ],
-    })
-    .lean();
+      .findById(id)
+      .populate({
+        path: 'transaction_items',
+        populate: [
+          { path: 'anggota_id' },
+          { path: 'period_id' },
+        ],
+      })
+      .lean();
     if (!doc) throw new NotFoundException('Transaction not found');
     return doc;
   }
