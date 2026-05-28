@@ -9,8 +9,18 @@ export class TransactionController {
   constructor(private readonly transactionService: TransactionService) {}
 
   @Get()
-  findAll() {
-    return this.transactionService.findAll();
+  findAll(
+    @Query('creator_id') creatorId?: string,
+    @Query('region_id') regionId?: string,
+    @Query('month') month?: string,
+    @Query('year') year?: string,
+  ) {
+    return this.transactionService.findAll({
+      creatorId,
+      regionId,
+      month: month ? parseInt(month, 10) : undefined,
+      year: year ? parseInt(year, 10) : undefined,
+    });
   }
 
   @Get('export')

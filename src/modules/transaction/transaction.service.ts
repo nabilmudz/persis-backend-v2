@@ -18,84 +18,159 @@ export class TransactionService {
     @InjectConnection() private connection: Connection,
   ) { }
 
-  async findAll() {
-    return this.transactionModel.find().exec();
-  }
+  async findAll(filters?: {
+    creatorId?: string;
+    regionId?: string;
+    month?: number;
+    year?: number;
+  }) {
+    const { creatorId, regionId, month, year } = filters || {};
 
-  async export(month: number, year: number, regionId?: string) {
-    const periodMatch: any = { 'period.year': year };
-    if (month > 0) {
-      periodMatch['period.month'] = month;
+    const pipeline: any[] = [];
+
+    if (creatorId) {
+      pipeline.push({
+        $match: {
+          $or: [
+            { creator_id: new Types.ObjectId(creatorId) },
+            { creator_id: creatorId }
+          ]
+        }
+      });
     }
 
-    const pipeline: any[] = [
+    pipeline.push(
+      {
+        $lookup: {
+          from: 'transactionitems',
+          localField: '_id',
+          foreignField: 'transaction_id',
+          as: 'items',
+        },
+      },
+      { $unwind: { path: '$items', preserveNullAndEmptyArrays: true } },
+    );
+
+    pipeline.push(
       {
         $addFields: {
-          period_id_obj: { $toObjectId: '$period_id' },
+          'items.period_id_obj': {
+            $cond: { if: '$items.period_id', then: { $toObjectId: '$items.period_id' }, else: null }
+          },
         },
       },
       {
         $lookup: {
           from: 'duesperiods',
-          localField: 'period_id_obj',
+          localField: 'items.period_id_obj',
           foreignField: '_id',
-          as: 'period',
+          as: 'items.period_id',
         },
       },
-      { $unwind: '$period' },
-      { $match: periodMatch },
       {
         $addFields: {
-          anggota_id_obj: { $toObjectId: '$anggota_id' },
+          'items.period_id': { $arrayElemAt: ['$items.period_id', 0] },
+        },
+      },
+    );
+
+    pipeline.push(
+      {
+        $addFields: {
+          'items.anggota_id_obj': {
+            $cond: { if: '$items.anggota_id', then: { $toObjectId: '$items.anggota_id' }, else: null }
+          },
         },
       },
       {
         $lookup: {
           from: 'users',
-          localField: 'anggota_id_obj',
+          localField: 'items.anggota_id_obj',
           foreignField: '_id',
-          as: 'member',
+          as: 'items.anggota_id',
         },
       },
-      { $unwind: '$member' },
-      ...(regionId ? [{ $match: { 'member.region_id': new Types.ObjectId(regionId) } }] : []),
       {
-        $lookup: {
-          from: 'transactions',
-          localField: 'transaction_id',
-          foreignField: '_id',
-          as: 'transaction',
+        $addFields: {
+          'items.anggota_id': { $arrayElemAt: ['$items.anggota_id', 0] },
         },
       },
-      { $unwind: { path: '$transaction', preserveNullAndEmptyArrays: true } },
-      {
-        $project: {
-          _id: 1,
-          transaction_id: 1,
-          created_at: '$transaction.created_at',
-          amount: '$period.amount',
-          status: '$status',
-          member_name: '$member.fullname',
-          npa: '$member.npa',
-          period_month: '$period.month',
-          period_year: '$period.year',
-          item_status: '$status',
-        },
-      },
-    ];
-    const items = await this.transactionItemsModel.aggregate(pipeline);
+    );
 
-    const totalAmount = items.reduce(
-      (acc, item) => acc + (item.amount ?? 0),
+    if (month || year) {
+      const periodMatch: any = {};
+      if (year) periodMatch['items.period_id.year'] = year;
+      if (month && month > 0) periodMatch['items.period_id.month'] = month;
+      if (Object.keys(periodMatch).length > 0) {
+        pipeline.push({ $match: periodMatch });
+      }
+    }
+
+    if (regionId) {
+      pipeline.push(
+        {
+          $addFields: {
+            creator_id_obj: { $toObjectId: '$creator_id' }
+          }
+        },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'creator_id_obj',
+            foreignField: '_id',
+            as: 'creator',
+          },
+        },
+        { $unwind: { path: '$creator', preserveNullAndEmptyArrays: true } },
+        {
+          $match: {
+            $or: [
+              { 'creator.region_id': new Types.ObjectId(regionId) },
+              { 'creator.region_id': regionId }
+            ]
+          }
+        },
+      );
+    }
+
+    pipeline.push(
+      {
+        $group: {
+          _id: '$_id',
+          creator_id: { $first: '$creator_id' },
+          payment_method_id: { $first: '$payment_method_id' },
+          status: { $first: '$status' },
+          total_amount: { $first: '$total_amount' },
+          acc_status: { $first: '$acc_status' },
+          acc_by: { $first: '$acc_by' },
+          acc_at: { $first: '$acc_at' },
+          is_synced: { $first: '$is_synced' },
+          synced_at: { $first: '$synced_at' },
+          created_at: { $first: '$created_at' },
+          transaction_items: {
+            $push: {
+              $cond: [{ $not: ['$items._id'] }, '$$REMOVE', '$items']
+            }
+          },
+        },
+      },
+      { $sort: { created_at: -1 } },
+    );
+
+    const transactions = await this.transactionModel.aggregate(pipeline);
+
+    const totalAmount = transactions.reduce(
+      (acc, t) => acc + (t.total_amount ?? 0),
       0,
     );
 
     return {
       meta: {
-        month,
-        year,
+        month: month ?? null,
+        year: year ?? null,
         generated_at: new Date(),
-        total_transactions: items.length,
+        total_transactions: transactions.length,
+        ...(creatorId ? { creator_id: creatorId } : {}),
         ...(regionId ? { region_id: regionId } : {}),
       },
       summary: {
@@ -108,7 +183,103 @@ export class TransactionService {
           pp: { percentage: 15, amount: totalAmount * 0.15 },
         },
       },
-      data: items,
+      data: transactions,
+    };
+  }
+
+  async export(month: number, year: number, regionId?: string) {
+    const matchStage: any = { 'period.year': year };
+    if (month > 0) {
+      matchStage['period.month'] = month;
+    }
+
+    const pipeline: any[] = [
+      {
+        $lookup: {
+          from: 'transactionitems',
+          localField: '_id',
+          foreignField: 'transaction_id',
+          as: 'items',
+        },
+      },
+      { $unwind: '$items' },
+      {
+        $addFields: {
+          'items.period_id_obj': {
+            $toObjectId: '$items.period_id',
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: 'duesperiods',
+          localField: 'items.period_id_obj',
+          foreignField: '_id',
+          as: 'period',
+        },
+      },
+      { $unwind: '$period' },
+      {
+        $match: matchStage,
+      },
+      {
+        $addFields: {
+          'items.anggota_id_obj': {
+            $toObjectId: '$items.anggota_id',
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'items.anggota_id_obj',
+          foreignField: '_id',
+          as: 'member',
+        },
+      },
+      { $unwind: '$member' },
+      ...(regionId ? [{ $match: { 'member.region_id': new Types.ObjectId(regionId) } }] : []),
+      {
+        $project: {
+          transaction_id: '$_id',
+          created_at: 1,
+          total_amount: 1,
+          status: 1,
+          member_name: '$member.fullname',
+          npa: '$member.npa',
+          period_month: '$period.month',
+          period_year: '$period.year',
+          item_status: '$items.status',
+        },
+      },
+    ];
+
+    const transactions = await this.transactionModel.aggregate(pipeline);
+
+    const totalAmount = transactions.reduce(
+      (acc, item) => acc + (item.total_amount ?? 0),
+      0,
+    );
+
+    return {
+      meta: {
+        month,
+        year,
+        generated_at: new Date(),
+        total_transactions: transactions.length,
+        ...(regionId ? { region_id: regionId } : {}),
+      },
+      summary: {
+        total_amount: totalAmount,
+        distribution: {
+          pj: { percentage: 30, amount: totalAmount * 0.30 },
+          pc: { percentage: 20, amount: totalAmount * 0.20 },
+          pd: { percentage: 20, amount: totalAmount * 0.20 },
+          pw: { percentage: 15, amount: totalAmount * 0.15 },
+          pp: { percentage: 15, amount: totalAmount * 0.15 },
+        },
+      },
+      data: transactions,
     };
   }
 
