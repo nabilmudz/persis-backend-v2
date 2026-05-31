@@ -1,6 +1,6 @@
-import { 
-  IsNotEmpty, IsNumber, IsMongoId, IsArray, 
-  ValidateNested, IsString, IsOptional, IsBoolean, IsDateString 
+import {
+  IsNotEmpty, IsNumber, IsMongoId, IsArray,
+  ValidateNested, IsString, IsOptional, IsBoolean, IsDateString
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateTransactionItemDto } from '../../transaction-item/dto/create-transaction-item.dto';
@@ -8,7 +8,7 @@ import { CreateTransactionItemDto } from '../../transaction-item/dto/create-tran
 export class CreateTransactionsDto {
   @IsString()
   @IsOptional()
-  _id?: string; 
+  _id?: string;
 
   @IsMongoId()
   @IsNotEmpty()
@@ -30,9 +30,21 @@ export class CreateTransactionsDto {
   @IsOptional()
   acc_status: string = 'pending';
 
+  @IsString()
+  @IsOptional()
+  acc_by: string;
+
+  @IsDateString()
+  @IsOptional()
+  acc_at?: string;
+
   @IsBoolean()
   @IsOptional()
   is_synced: boolean = false;
+
+  @IsDateString()
+  @IsOptional()
+  synced_at?: string;
 
   @IsDateString()
   @IsOptional()

@@ -11,5 +11,5 @@ export class CreateTransactionItemDto {
 
   @IsEnum(['pending', 'paid'])
   @IsOptional()
-  status: string = 'pending';
+  status: string;
 }
