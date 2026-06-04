@@ -46,8 +46,12 @@ export class UsersService {
     private regionsService: RegionsService,
   ) { }
 
-  async findAll(): Promise<UserDocument[]> {
-    return this.userModel.find().populate('region_id').select('-password_hash').exec();
+  async findAll(isActive?: string): Promise<UserDocument[]> {
+    const filter: Record<string, any> = {};
+    if (isActive !== undefined) {
+      filter.is_active = isActive === 'true';
+    }
+    return this.userModel.find(filter).populate('region_id').select('-password_hash').exec();
   }
 
   async findAllWithStatus(): Promise<any[]> {
