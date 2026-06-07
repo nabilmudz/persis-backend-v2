@@ -1,14 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { v4 as uuidv4 } from 'uuid';
 
 export type TransactionsDocument = Transactions & Document;
 
 @Schema({ timestamps: { createdAt: 'created_at', updatedAt: false } })
 export class Transactions {
-  @Prop({ type: String, default: uuidv4 })
-  _id!: string;
-
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   creator_id!: Types.ObjectId;
 

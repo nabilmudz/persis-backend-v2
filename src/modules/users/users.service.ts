@@ -44,10 +44,14 @@ export class UsersService {
     private otpService: OtpService,
     private emailService: EmailService,
     private regionsService: RegionsService,
-  ) {}  
+  ) { }
 
-  async findAll(): Promise<UserDocument[]> {
-    return this.userModel.find().populate('region_id').select('-password_hash').exec();
+  async findAll(isActive?: string): Promise<UserDocument[]> {
+    const filter: Record<string, any> = {};
+    if (isActive !== undefined) {
+      filter.is_active = isActive === 'true';
+    }
+    return this.userModel.find(filter).populate('region_id').select('-password_hash').exec();
   }
 
   async findAllWithStatus(): Promise<any[]> {
@@ -61,13 +65,13 @@ export class UsersService {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
 
-    const pastPeriods = periods.filter(period => 
+    const pastPeriods = periods.filter(period =>
       period.year < currentYear || (period.year === currentYear && period.month < currentMonth)
     );
 
     return users.map(user => {
       const userItems = items.filter(item => item.anggota_id.toString() === user._id.toString());
-      
+
       const hasTunggakan = pastPeriods.some(period => {
         const item = userItems.find(i => i.period_id.toString() === period._id.toString());
         return !item;
@@ -171,7 +175,7 @@ export class UsersService {
   }
 
   async checkNpa(npa: string) {
-    const user = await this.userModel.findOne({ npa }).exec();
+    const user = await this.userModel.findOne({ npa }).populate('region_id', 'name').exec();
     if (!user) {
       throw new NotFoundException('NPA tidak ditemukan');
     }
@@ -182,23 +186,31 @@ export class UsersService {
 
     return {
       message: 'NPA valid',
+      id: user._id,
       npa: user.npa,
       fullname: user.fullname,
+      region_name: (user.region_id as any)?.name ?? null,
     };
   }
 
-  async setPassword(npa: string, password: string) {
-    const user = await this.userModel.findOne({ npa }).exec();
+  async setPassword(npaOrEmail: string, password: string) {
+    if (!npaOrEmail) {
+      throw new BadRequestException('Identifier (NPA or Email) is required');
+    }
+    const isNpa = !npaOrEmail.includes('@');
+    const user = await this.userModel.findOne(
+      isNpa ? { npa: npaOrEmail } : { email: npaOrEmail }
+    ).exec();
 
     if (!user) {
-      throw new NotFoundException('NPA tidak ditemukan');
+      throw new NotFoundException(isNpa ? 'NPA tidak ditemukan' : 'Email tidak ditemukan');
     }
 
     const hashed = await bcrypt.hash(password, 10);
 
     await this.userModel.updateOne(
-      { npa },
-      { password_hash: hashed, isActive: true },
+      { _id: user._id },
+      { password_hash: hashed, is_active: true },
     ).exec();
 
     return { message: 'Password berhasil disimpan' };
@@ -206,22 +218,35 @@ export class UsersService {
 
   async activate(payload: any): Promise<any> {
     const { npa, email } = payload;
+    const identifier = npa || email;
 
-    const otp = await this.otpService.generate(npa);
-    await this.emailService.sendOtp(email, otp);
+    const isNpa = identifier && !identifier.includes('@');
+    const user = await this.userModel.findOne(
+      isNpa ? { npa: identifier } : { email: identifier }
+    ).exec();
 
-    return { message: 'OTP berhasil dikirim ke email' };
+    if (!user) throw new NotFoundException('User tidak ditemukan');
+
+    const otp = await this.otpService.generate(user.npa);
+    await this.emailService.sendOtp(user.email, otp);
+
+    return { message: 'OTP berhasil dikirim ke email', email: user.email };
   }
 
-  async verifyOtp(npa: string, otp: string): Promise<any> {
-    await this.otpService.verify(npa, otp);
+  async verifyOtp(npaOrEmail: string, otp: string): Promise<any> {
+    const isNpa = !npaOrEmail.includes('@');
+    const user = await this.userModel.findOne(
+      isNpa ? { npa: npaOrEmail } : { email: npaOrEmail }
+    ).exec();
 
-    const result = await this.userModel.updateOne(
-      { npa },
+    if (!user) throw new BadRequestException('User tidak ditemukan');
+
+    await this.otpService.verify(user.npa, otp);
+
+    await this.userModel.updateOne(
+      { _id: user._id },
       { is_active: true },
     );
-
-    if (result.matchedCount === 0) throw new BadRequestException('User tidak ditemukan');
 
     return { message: 'Akun berhasil diaktivasi' };
   }
@@ -238,4 +263,5 @@ export class UsersService {
       throw new BadRequestException('ID tidak valid');
     }
   }
+
 }

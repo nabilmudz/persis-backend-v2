@@ -13,7 +13,7 @@ import { extname } from 'path';
 
 @Controller('bank-account')
 export class BankAccountController {
-  constructor(private readonly bankAccountService: BankAccountService) {}
+  constructor(private readonly bankAccountService: BankAccountService) { }
 
   @Get()
   findAll() {
@@ -24,7 +24,7 @@ export class BankAccountController {
   findOne(@Param('id') id: string) {
     return this.bankAccountService.findOne(id);
   }
-  
+
   @Post()
   @UseInterceptors(
     FileInterceptor('qris_image', {
@@ -35,7 +35,7 @@ export class BankAccountController {
           cb(null, `qris-${unique}${extname(file.originalname)}`);
         },
       }),
-      limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+      limits: { fileSize: 2 * 1024 * 1024 },
       fileFilter: (req, file, cb) => {
         if (!file.mimetype.match(/\/(jpg|jpeg|png|webp)$/)) {
           return cb(new BadRequestException('Hanya file gambar yang diizinkan'), false);
@@ -44,7 +44,7 @@ export class BankAccountController {
       },
     }),
   )
-  
+
   create(
     @Body() payload: CreateBankAccountDto,
     @UploadedFile() file?: Express.Multer.File,

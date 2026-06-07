@@ -14,7 +14,6 @@ export class BankAccounts {
   @Prop({ type: String, default: null })
   account_number?: string;
 
-  // Data QRIS
   @Prop({ type: String, default: null })
   qris_image_url?: string;
 

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 
 import { CreateUsersDto } from './dto/create-users.dto';
 import { UpdateUsersDto } from './dto/update-users.dto';
@@ -8,11 +8,11 @@ import { VerifyOtpDto } from '../otp/dto/verify-otp.dto';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @Get()
-  findAll() {
-    return this.usersService.findAll();
+  findAll(@Query('isActive') isActive?: string) {
+    return this.usersService.findAll(isActive);
   }
 
   @Get('with-status')
@@ -45,19 +45,20 @@ export class UsersController {
     return this.usersService.remove(id);
   }
 
-  @Get('check-npa/:npa') 
+  @Get('check-npa/:npa')
   async findByNpa(@Param('npa') npa: string) {
     return this.usersService.checkNpa(npa);
   }
 
-  @Get('region/:regionId') 
+  @Get('region/:regionId')
   async findByRegion(@Param('regionId') npa: string) {
     return this.usersService.findByRegion(npa);
   }
 
   @Post('set-password')
-  async setPassword(@Body() body: { npa: string; password: string }) {
-    return this.usersService.setPassword(body.npa, body.password);
+  async setPassword(@Body() body: any) {
+    const identifier = body.npa || body.email || body.identifier;
+    return this.usersService.setPassword(identifier, body.password);
   }
 
   @Post('activate')
@@ -67,6 +68,11 @@ export class UsersController {
 
   @Post('verify-otp')
   verifyOtp(@Body() dto: VerifyOtpDto) {
-    return this.usersService.verifyOtp(dto.npa, dto.otp);
+    const identifier = dto.npa || dto.email;
+    if (!identifier) {
+      throw new BadRequestException('NPA atau email wajib diisi');
+    }
+
+    return this.usersService.verifyOtp(identifier, dto.otp);
   }
 }

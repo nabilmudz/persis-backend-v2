@@ -9,24 +9,37 @@ export class TransactionController {
   constructor(private readonly transactionService: TransactionService) {}
 
   @Get()
-  findAll() {
-    return this.transactionService.findAll();
+  findAll(
+    @Query('creator_id') creatorId?: string,
+    @Query('region_id') regionId?: string,
+    @Query('month') month?: string,
+    @Query('year') year?: string,
+  ) {
+    return this.transactionService.findAll({
+      creatorId,
+      regionId,
+      month: month ? parseInt(month, 10) : undefined,
+      year: year ? parseInt(year, 10) : undefined,
+    });
   }
 
   @Get('export')
   async export(
     @Query('month', ParseIntPipe) month: number,
     @Query('year', ParseIntPipe) year: number,
+    @Query('region_id') regionId?: string,
   ) {
-    return this.transactionService.export(month, year);
+    return this.transactionService.export(month, year, regionId);
   }
   
   @Get('members-payment-status')
   getMembersPaymentStatus(
     @Query('year', ParseIntPipe) year: number,
+    @Query('month') month?: string,
     @Query('region_id') regionId?: string,
   ) {
-    return this.transactionService.getMembersPaymentStatus(year, regionId);
+    const parsedMonth = month ? parseInt(month, 10) : undefined;
+    return this.transactionService.getMembersPaymentStatus(year, parsedMonth, regionId);
   }
 
   @Get(':id')
