@@ -27,10 +27,10 @@ export class PaymentMethodSeeder {
     ];
 
     for (const method of methods) {
-      await this.paymentMethodModel.updateOne(
+      await this.paymentMethodModel.findOneAndUpdate(
         { code: method.code },
-        { $setOnInsert: method },
-        { upsert: true },
+        { $set: method },
+        { upsert: true, new: true },
       );
     }
     console.log('Payment Methods seeded successfully');

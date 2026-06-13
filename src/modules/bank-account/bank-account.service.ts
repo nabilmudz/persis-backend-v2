@@ -4,7 +4,6 @@ import { Model, Types } from 'mongoose';
 import { CreateBankAccountDto } from './dto/create-bank-account.dto';
 import { UpdateBankAccountDto } from './dto/update-bank-account.dto';
 import { BankAccounts, BankAccountsDocument } from './schemas/bank-account.schema';
-import { JwtUser } from '../../common/strategies/jwt.strategy';
 
 @Injectable()
 export class BankAccountService {
@@ -13,17 +12,27 @@ export class BankAccountService {
     private readonly bankAccountModel: Model<BankAccountsDocument>,
   ) {}
 
-  async findAll(user: JwtUser): Promise<BankAccountsDocument[]> {
+  async findAll(
+    regionId?: string,
+    paymentMethodId?: string,
+  ): Promise<BankAccountsDocument[]> {
+    const filter: Record<string, any> = {};
+    if (regionId) {
+      filter.region_id = { $in: [regionId, new Types.ObjectId(regionId)] };
+    }
+    if (paymentMethodId) {
+      filter.payment_method_id = { $in: [paymentMethodId, new Types.ObjectId(paymentMethodId)] };
+    }
     return this.bankAccountModel
-      .find({ region_id: new Types.ObjectId(user.region_id) })
+      .find(filter)
       .populate('payment_method_id')
       .populate('region_id', 'name level')
       .exec();
   }
 
-  async findOne(id: string, user: JwtUser): Promise<BankAccountsDocument> {
+  async findOne(id: string): Promise<BankAccountsDocument> {
     const doc = await this.bankAccountModel
-      .findOne({ _id: id, region_id: new Types.ObjectId(user.region_id) })
+      .findById(id)
       .populate('payment_method_id')
       .populate('region_id', 'name level')
       .exec();
@@ -33,7 +42,6 @@ export class BankAccountService {
 
   async create(
     payload: CreateBankAccountDto,
-    user: JwtUser,
     file?: Express.Multer.File,
   ): Promise<BankAccountsDocument> {
     if (file) {
@@ -42,7 +50,8 @@ export class BankAccountService {
 
     const created = new this.bankAccountModel({
       ...payload,
-      region_id: new Types.ObjectId(user.region_id),
+      region_id: payload.region_id ? new Types.ObjectId(payload.region_id) : undefined,
+      payment_method_id: new Types.ObjectId(payload.payment_method_id),
     });
     return created.save();
   }
@@ -50,23 +59,20 @@ export class BankAccountService {
   async update(
     id: string,
     payload: UpdateBankAccountDto,
-    user: JwtUser,
   ): Promise<BankAccountsDocument> {
+    const updateData: Record<string, any> = { ...payload };
+    if (payload.region_id) updateData.region_id = new Types.ObjectId(payload.region_id);
+    if (payload.payment_method_id) updateData.payment_method_id = new Types.ObjectId(payload.payment_method_id);
+
     const updated = await this.bankAccountModel
-      .findOneAndUpdate(
-        { _id: id, region_id: new Types.ObjectId(user.region_id) },
-        payload,
-        { new: true },
-      )
+      .findByIdAndUpdate(id, updateData, { new: true })
       .exec();
     if (!updated) throw new NotFoundException('Bank Account not found');
     return updated;
   }
 
-  async remove(id: string, user: JwtUser): Promise<{ deleted: true }> {
-    const result = await this.bankAccountModel
-      .findOneAndDelete({ _id: id, region_id: new Types.ObjectId(user.region_id) })
-      .exec();
+  async remove(id: string): Promise<{ deleted: true }> {
+    const result = await this.bankAccountModel.findByIdAndDelete(id).exec();
     if (!result) throw new NotFoundException('Bank Account not found');
     return { deleted: true };
   }

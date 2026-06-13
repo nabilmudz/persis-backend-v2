@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Delete,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -19,8 +20,6 @@ import { CreateBankAccountDto } from './dto/create-bank-account.dto';
 import { UpdateBankAccountDto } from './dto/update-bank-account.dto';
 import { BankAccountService } from './bank-account.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { JwtUser } from '../../common/strategies/jwt.strategy';
 
 @Controller('bank-account')
 @UseGuards(JwtAuthGuard)
@@ -28,16 +27,16 @@ export class BankAccountController {
   constructor(private readonly bankAccountService: BankAccountService) {}
 
   @Get()
-  findAll(@CurrentUser() user: JwtUser) {
-    return this.bankAccountService.findAll(user);
+  findAll(
+    @Query('region_id') regionId?: string,
+    @Query('payment_method_id') paymentMethodId?: string,
+  ) {
+    return this.bankAccountService.findAll(regionId, paymentMethodId);
   }
 
   @Get(':id')
-  findOne(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtUser,
-  ) {
-    return this.bankAccountService.findOne(id, user);
+  findOne(@Param('id') id: string) {
+    return this.bankAccountService.findOne(id);
   }
 
   @Post()
@@ -62,26 +61,21 @@ export class BankAccountController {
   )
   create(
     @Body() payload: CreateBankAccountDto,
-    @CurrentUser() user: JwtUser,
     @UploadedFile() file?: Express.Multer.File,
   ) {
-    return this.bankAccountService.create(payload, user, file);
+    return this.bankAccountService.create(payload, file);
   }
 
   @Patch(':id')
   update(
     @Param('id') id: string,
     @Body() payload: UpdateBankAccountDto,
-    @CurrentUser() user: JwtUser,
   ) {
-    return this.bankAccountService.update(id, payload, user);
+    return this.bankAccountService.update(id, payload);
   }
 
   @Delete(':id')
-  remove(
-    @Param('id') id: string,
-    @CurrentUser() user: JwtUser,
-  ) {
-    return this.bankAccountService.remove(id, user);
+  remove(@Param('id') id: string) {
+    return this.bankAccountService.remove(id);
   }
 }

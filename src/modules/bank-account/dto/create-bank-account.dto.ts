@@ -3,6 +3,10 @@ import { Transform } from 'class-transformer';
 
 export class CreateBankAccountDto {
   @IsMongoId()
+  @IsOptional()
+  region_id?: string;
+
+  @IsMongoId()
   @IsNotEmpty()
   payment_method_id!: string;
 

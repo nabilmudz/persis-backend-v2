@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsMongoId, IsEnum, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsMongoId, IsEnum, IsOptional, IsString } from 'class-validator';
 
 export class CreateTransactionItemDto {
   @IsMongoId()
@@ -12,4 +12,8 @@ export class CreateTransactionItemDto {
   @IsEnum(['pending', 'paid'])
   @IsOptional()
   status: string;
+
+  @IsString()
+  @IsOptional()
+  bukti_url?: string;
 }
