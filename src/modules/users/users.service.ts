@@ -127,7 +127,7 @@ export class UsersService {
     if (!isPasswordValid) throw new BadRequestException('Password salah');
 
     const { password_hash, ...userWithoutPassword } = user.toObject();
-    const jwtPayload = { sub: user._id, email: user.email, role: user.role };
+    const jwtPayload = { sub: user._id, email: user.email, role: user.role, region_id: user.region_id };
     const access_token = jwt.sign(jwtPayload, this.jwtCfg.secret!, { expiresIn: '1d' });
 
     return { user: userWithoutPassword, access_token };

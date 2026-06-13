@@ -1,11 +1,7 @@
-import { IsBoolean, IsMongoId, IsNotEmpty, IsOptional, IsString, IsUrl, } from 'class-validator';
+import { IsBoolean, IsMongoId, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class CreateBankAccountDto {
-  // @IsMongoId()
-  @IsOptional()
-  region_id?: string | null;
-
   @IsMongoId()
   @IsNotEmpty()
   payment_method_id!: string;
@@ -26,4 +22,4 @@ export class CreateBankAccountDto {
   @IsBoolean()
   @IsOptional()
   is_active: boolean = true;
-} 
+}

@@ -5,6 +5,9 @@ export type BankAccountsDocument = BankAccounts & Document;
 
 @Schema({ timestamps: true })
 export class BankAccounts {
+  @Prop({ type: Types.ObjectId, ref: 'Regions', required: true })
+  region_id!: Types.ObjectId;
+
   @Prop({ type: Types.ObjectId, ref: 'PaymentMethod', required: true })
   payment_method_id!: Types.ObjectId;
 
