@@ -4,12 +4,14 @@ import { Model, Types } from 'mongoose';
 import { CreateBankAccountDto } from './dto/create-bank-account.dto';
 import { UpdateBankAccountDto } from './dto/update-bank-account.dto';
 import { BankAccounts, BankAccountsDocument } from './schemas/bank-account.schema';
+import { RegionsService } from '../regions/regions.service';
 
 @Injectable()
 export class BankAccountService {
   constructor(
     @InjectModel(BankAccounts.name)
     private readonly bankAccountModel: Model<BankAccountsDocument>,
+    private readonly regionsService: RegionsService,
   ) {}
 
   async findAll(
@@ -18,7 +20,9 @@ export class BankAccountService {
   ): Promise<BankAccountsDocument[]> {
     const filter: Record<string, any> = {};
     if (regionId) {
-      filter.region_id = { $in: [regionId, new Types.ObjectId(regionId)] };
+      const ancestorIds = await this.regionsService.getAncestors(regionId);
+      const allIds = [...new Set(ancestorIds)];
+      filter.region_id = { $in: allIds.map(id => new Types.ObjectId(id)) };
     }
     if (paymentMethodId) {
       filter.payment_method_id = { $in: [paymentMethodId, new Types.ObjectId(paymentMethodId)] };

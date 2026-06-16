@@ -20,13 +20,24 @@ export class RegionsService {
   async getDescendants(id: string): Promise<string[]> {
     const descendants: string[] = [id];
     const children = await this.regionsModel.find({ parent_id: id }).exec();
-    
+
     for (const child of children) {
       const childDescendants = await this.getDescendants(child._id.toString());
       descendants.push(...childDescendants);
     }
-    
+
     return descendants;
+  }
+
+  async getAncestors(id: string): Promise<string[]> {
+    const ancestors: string[] = [id];
+    let current = await this.regionsModel.findById(id).select('parent_id').exec();
+    while (current?.parent_id) {
+      const parentId = current.parent_id.toString();
+      ancestors.push(parentId);
+      current = await this.regionsModel.findById(parentId).select('parent_id').exec();
+    }
+    return ancestors;
   }
 
   async findOne(id: string): Promise<RegionsDocument> {

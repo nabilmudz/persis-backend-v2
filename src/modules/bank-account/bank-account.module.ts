@@ -8,6 +8,7 @@ import { BankAccountController } from './bank-account.controller';
 import { BankAccountService } from './bank-account.service';
 import { BankAccounts, BankAccountsSchema } from './schemas/bank-account.schema';
 import { JwtStrategy } from '../../common/strategies/jwt.strategy';
+import { RegionsModule } from '../regions/regions.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { JwtStrategy } from '../../common/strategies/jwt.strategy';
         signOptions: { expiresIn: '1d' },
       }),
     }),
+    RegionsModule,
   ],
   controllers: [BankAccountController],
   providers: [BankAccountService, JwtStrategy],

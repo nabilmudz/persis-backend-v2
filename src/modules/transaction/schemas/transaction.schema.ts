@@ -17,7 +17,7 @@ export class Transactions {
   @Prop({ required: true })
   total_amount!: number;
 
-  @Prop({ enum: ['pending', 'acc_pj'], default: 'pending' })
+  @Prop({ enum: ['pending', 'acc_pj', 'acc_pc', 'acc_pd', 'rejected'], default: 'pending' })
   acc_status!: string;
 
   @Prop({ type: Types.ObjectId, ref: 'User', default: null })
@@ -25,6 +25,9 @@ export class Transactions {
 
   @Prop({ type: Date, default: null })
   acc_at?: Date;
+
+  @Prop({ type: String, default: null })
+  rejection_reason?: string;
 
   @Prop({ default: false })
   is_synced!: boolean;

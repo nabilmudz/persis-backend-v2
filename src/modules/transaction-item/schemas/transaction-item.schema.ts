@@ -14,8 +14,11 @@ export class TransactionItems {
   @Prop({ type: Types.ObjectId, ref: 'DuesPeriods', required: true })
   period_id!: Types.ObjectId;
   
-  @Prop({ enum: ['pending', 'paid'], default: 'pending' })
+  @Prop({ enum: ['pending', 'paid', 'rejected'], default: 'pending' })
   status!: string;
+
+  @Prop({ type: Boolean, default: true, select: false })
+  _active?: boolean;
 
   @Prop({ type: String, required: false })
   bukti_url?: string;
@@ -23,4 +26,10 @@ export class TransactionItems {
 
 export const TransactionItemsSchema = SchemaFactory.createForClass(TransactionItems);
 
-TransactionItemsSchema.index({ anggota_id: 1, period_id: 1 }, { unique: true });
+TransactionItemsSchema.index(
+  { anggota_id: 1, period_id: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { _active: true },
+  },
+);

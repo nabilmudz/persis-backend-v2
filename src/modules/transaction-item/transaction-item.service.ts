@@ -23,7 +23,7 @@ export class TransactionItemService {
   async findByUserWithStatus(userId: string): Promise<any[]> {
     const [periods, items] = await Promise.all([
       this.periodModel.find({ is_active: true }).exec(),
-      this.transactionItemModel.find({ anggota_id: userId }).exec(),
+      this.transactionItemModel.find({ anggota_id: userId, _active: true }).exec(),
     ]);
 
     const now = new Date();
@@ -36,7 +36,8 @@ export class TransactionItemService {
       );
 
       if (item) {
-        return { period, item, status: 'paid' };
+        const derivedStatus = item.status === 'rejected' ? 'ditolak' : 'paid';
+        return { period, item, status: derivedStatus };
       }
 
       const isPast =

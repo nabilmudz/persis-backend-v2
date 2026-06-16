@@ -1,12 +1,13 @@
 import { CreateTransactionsDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { Transactions, TransactionsDocument } from './schemas/transaction.schema';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Model, Connection, Types } from 'mongoose';
 import { TransactionItems, TransactionItemsDocument } from '../transaction-item/schemas/transaction-item.schema';
 import { DuesPeriods, DuesPeriodsDocument } from '../dues-periods/schemas/dues-periods.schema';
 import { User, UserDocument } from '../users/schemas/users.schema';
+import { RegionsService } from '../regions/regions.service';
 
 @Injectable()
 export class TransactionService {
@@ -16,6 +17,7 @@ export class TransactionService {
     @InjectModel(DuesPeriods.name) private duesPeriodsModel: Model<DuesPeriodsDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectConnection() private connection: Connection,
+    private regionsService: RegionsService,
   ) { }
 
   async findAll(filters?: {
@@ -23,8 +25,10 @@ export class TransactionService {
     regionId?: string;
     month?: number;
     year?: number;
+    accStatus?: string;
+    paymentMethodId?: string;
   }) {
-    const { creatorId, regionId, month, year } = filters || {};
+    const { creatorId, regionId, month, year, accStatus, paymentMethodId } = filters || {};
 
     const pipeline: any[] = [];
 
@@ -34,6 +38,21 @@ export class TransactionService {
           $or: [
             { creator_id: new Types.ObjectId(creatorId) },
             { creator_id: creatorId }
+          ]
+        }
+      });
+    }
+
+    if (accStatus) {
+      pipeline.push({ $match: { acc_status: accStatus } });
+    }
+
+    if (paymentMethodId) {
+      pipeline.push({
+        $match: {
+          $or: [
+            { payment_method_id: new Types.ObjectId(paymentMethodId) },
+            { payment_method_id: paymentMethodId }
           ]
         }
       });
@@ -107,6 +126,9 @@ export class TransactionService {
     }
 
     if (regionId) {
+      const descendantIds = await this.regionsService.getDescendants(regionId);
+      const regionObjectIds = descendantIds.map(id => new Types.ObjectId(id));
+
       pipeline.push(
         {
           $addFields: {
@@ -125,8 +147,8 @@ export class TransactionService {
         {
           $match: {
             $or: [
-              { 'creator.region_id': new Types.ObjectId(regionId) },
-              { 'creator.region_id': regionId }
+              { 'creator.region_id': { $in: regionObjectIds } },
+              { 'creator.region_id': { $in: descendantIds } }
             ]
           }
         },
@@ -144,6 +166,7 @@ export class TransactionService {
           acc_status: { $first: '$acc_status' },
           acc_by: { $first: '$acc_by' },
           acc_at: { $first: '$acc_at' },
+          rejection_reason: { $first: '$rejection_reason' },
           is_synced: { $first: '$is_synced' },
           synced_at: { $first: '$synced_at' },
           created_at: { $first: '$created_at' },
@@ -301,11 +324,40 @@ export class TransactionService {
   }
 
   async create(payload: CreateTransactionsDto): Promise<any> {
+    const { items, ...transactionData } = payload;
+
+    const pairs = items.map(i => ({
+      anggota_id: new Types.ObjectId(i.anggota_id),
+      period_id: new Types.ObjectId(i.period_id),
+    }));
+
+    const existingItems = await this.transactionItemsModel
+      .find({ $or: pairs.map(p => ({ anggota_id: p.anggota_id, period_id: p.period_id })) })
+      .select('_id transaction_id anggota_id period_id')
+      .lean();
+
+    if (existingItems.length > 0) {
+      const existingTxnIds = [...new Set(existingItems.map(i => i.transaction_id))];
+      const existingTxns = await this.transactionModel
+        .find({ _id: { $in: existingTxnIds }, acc_status: { $ne: 'rejected' } })
+        .select('_id')
+        .lean();
+
+      const blockedTxnIds = new Set(existingTxns.map(t => t._id.toString()));
+
+      const blocked = existingItems.filter(i => blockedTxnIds.has(i.transaction_id.toString()));
+      if (blocked.length > 0) {
+        const blockedPeriods = blocked.map(i => i.period_id.toString());
+        throw new ConflictException(
+          `Bulan sudah dibayar untuk periode: ${blockedPeriods.join(', ')}`,
+        );
+      }
+    }
+
     const session = await this.connection.startSession();
     session.startTransaction();
 
     try {
-      const { items, ...transactionData } = payload;
 
       const created = await this.transactionModel.create(
         [transactionData as any],
@@ -336,11 +388,41 @@ export class TransactionService {
   }
 
   async update(id: string, payload: UpdateTransactionDto): Promise<TransactionsDocument> {
-    const updated = await this.transactionModel
-      .findByIdAndUpdate(id, payload, { new: true })
-      .exec();
-    if (!updated) throw new NotFoundException('Transaction not found');
-    return updated;
+    const txn = await this.transactionModel.findById(id).exec();
+    if (!txn) throw new NotFoundException('Transaction not found');
+
+    const session = await this.connection.startSession();
+    session.startTransaction();
+
+    try {
+      const updated = await this.transactionModel
+        .findByIdAndUpdate(id, payload, { new: true, session })
+        .exec();
+
+      if (payload.acc_status && payload.acc_status !== txn.acc_status) {
+        const itemStatus = (payload.acc_status === 'acc_pc' || payload.acc_status === 'acc_pd')
+          ? 'paid'
+          : payload.acc_status === 'rejected'
+            ? 'rejected'
+            : null;
+
+        if (itemStatus) {
+          await this.transactionItemsModel.updateMany(
+            { transaction_id: txn._id, status: 'pending' },
+            { $set: { status: itemStatus, _active: itemStatus !== 'rejected' } },
+            { session },
+          );
+        }
+      }
+
+      await session.commitTransaction();
+      return updated!;
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
   }
 
   async remove(id: string): Promise<{ deleted: true }> {
@@ -378,6 +460,20 @@ export class TransactionService {
       })
       .lean();
 
+    const transactionIds = [...new Set(items.map(i => i.transaction_id))];
+    const transactions = await this.transactionModel
+      .find({ _id: { $in: transactionIds } })
+      .select('_id acc_status rejection_reason')
+      .lean();
+
+    const accStatusMap = new Map<string, string>();
+    const rejectionReasonMap = new Map<string, string | null>();
+    for (const txn of transactions) {
+      const id = txn._id.toString();
+      accStatusMap.set(id, txn.acc_status);
+      rejectionReasonMap.set(id, txn.rejection_reason ?? null);
+    }
+
     const itemMap = new Map<string, any>();
     for (const item of items) {
       const key = `${item.anggota_id}-${item.period_id}`;
@@ -389,10 +485,16 @@ export class TransactionService {
       const payments = periods.map((period) => {
         const key = `${member._id}-${period._id}`;
         const item = itemMap.get(key);
+        const txnAccStatus = item ? accStatusMap.get(item.transaction_id.toString()) : undefined;
 
-        let status: 'paid' | 'tunggakan' | 'pending';
-        if (item?.status === 'paid') {
+        let status: 'paid' | 'tunggakan' | 'pending' | 'ditolak';
+        if (
+          item &&
+          (txnAccStatus === 'acc_pc' || txnAccStatus === 'acc_pd')
+        ) {
           status = 'paid';
+        } else if (txnAccStatus === 'rejected') {
+          status = 'ditolak';
         } else if (
           period.year < now.getFullYear() ||
           (period.year === now.getFullYear() && period.month < now.getMonth() + 1)
@@ -410,6 +512,7 @@ export class TransactionService {
           status,
           transaction_id: item?.transaction_id ?? null,
           bukti_url: item?.bukti_url ?? null,
+          rejection_reason: rejectionReasonMap.get(item?.transaction_id?.toString() ?? '') ?? null,
         };
       });
 

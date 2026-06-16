@@ -38,6 +38,10 @@ export class CreateTransactionsDto {
   @IsOptional()
   acc_at?: string;
 
+  @IsString()
+  @IsOptional()
+  rejection_reason?: string;
+
   @IsBoolean()
   @IsOptional()
   is_synced: boolean = false;

@@ -14,12 +14,16 @@ export class TransactionController {
     @Query('region_id') regionId?: string,
     @Query('month') month?: string,
     @Query('year') year?: string,
+    @Query('acc_status') accStatus?: string,
+    @Query('payment_method_id') paymentMethodId?: string,
   ) {
     return this.transactionService.findAll({
       creatorId,
       regionId,
       month: month ? parseInt(month, 10) : undefined,
       year: year ? parseInt(year, 10) : undefined,
+      accStatus,
+      paymentMethodId,
     });
   }
 
